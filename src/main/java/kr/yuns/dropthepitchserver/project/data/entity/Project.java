@@ -1,7 +1,6 @@
 package kr.yuns.dropthepitchserver.project.data.entity;
 
 import jakarta.persistence.*;
-import kr.yuns.dropthepitchserver.analyze.data.entity.File;
 import kr.yuns.dropthepitchserver.common.jpa.BaseEntity;
 import kr.yuns.dropthepitchserver.project.data.enums.ProjectStatus;
 import kr.yuns.dropthepitchserver.user.data.entity.User;
@@ -28,11 +27,4 @@ public class Project extends BaseEntity {
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private ProjectStatus status;
-
-    @OneToOne(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    private File file;
-
-    public void assignFile(File file) {
-        this.file = file;
-    }
 }
