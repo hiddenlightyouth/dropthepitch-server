@@ -1,4 +1,7 @@
 package kr.yuns.dropthepitchserver.persona.data.repository;
 
-public interface PersonaPsychologyRepository {
+import kr.yuns.dropthepitchserver.persona.data.entity.PersonaPsychology;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface PersonaPsychologyRepository extends JpaRepository<PersonaPsychology, Long> {
 }

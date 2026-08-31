@@ -1,4 +1,7 @@
 package kr.yuns.dropthepitchserver.persona.data.repository;
 
-public interface PersonaDigitalRepository {
+import kr.yuns.dropthepitchserver.persona.data.entity.PersonaDigital;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface PersonaDigitalRepository extends JpaRepository<PersonaDigital, Long> {
 }
