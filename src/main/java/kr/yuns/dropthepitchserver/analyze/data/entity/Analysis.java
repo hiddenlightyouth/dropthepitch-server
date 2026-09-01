@@ -1,6 +1,7 @@
 package kr.yuns.dropthepitchserver.analyze.data.entity;
 
 import jakarta.persistence.*;
+import kr.yuns.dropthepitchserver.analyze.data.enums.AnalysisStatus;
 import kr.yuns.dropthepitchserver.common.jpa.BaseEntity;
 import kr.yuns.dropthepitchserver.project.data.entity.Project;
 import lombok.*;
@@ -29,6 +30,10 @@ public class Analysis extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String content;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private AnalysisStatus status;
 
     @OneToMany(mappedBy = "analysis", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
