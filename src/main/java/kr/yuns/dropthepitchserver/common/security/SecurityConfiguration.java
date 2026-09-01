@@ -63,6 +63,7 @@ public class SecurityConfiguration {
                                 "/webjars/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/product/**").hasRole("USER")
+                        .requestMatchers("/projects/**").hasRole("USER")
                         .anyRequest().authenticated()
         );
 
