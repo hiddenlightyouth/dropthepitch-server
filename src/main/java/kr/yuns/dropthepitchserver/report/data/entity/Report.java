@@ -38,6 +38,10 @@ public class Report extends BaseEntity {
     @Builder.Default
     private ReportStatus status = ReportStatus.PENDING;
 
+//    연령별 의견 한 줄
+    @Column
+    private String insight;
+
 //    내보내기 한 PDF 파일 경로
     @Column
     private String pdfUrl;
@@ -50,9 +54,10 @@ public class Report extends BaseEntity {
         this.reportItems.add(reportItem);
     }
 
-    public void completeReport(String summary) {
+    public void completeReport(String summary, String insight) {
+        this.insight = insight;
         this.summary = summary;
-        this.status = ReportStatus.COMPLETED;
+        this.status = ReportStatus.DONE;
     }
 
     public void assignPdfUrl(String pdfUrl) {
