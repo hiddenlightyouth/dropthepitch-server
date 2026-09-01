@@ -32,6 +32,6 @@ public class ReportItem extends BaseEntity {
     private AgeGroup ageGroup;
 
 //    항목 내용
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String content;
 }

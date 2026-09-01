@@ -6,11 +6,10 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum ReportItemType {
-    POSITIVE_POINT("긍정적인 포인트"),
-    NEGATIVE_POINT("부정적인 포인트"),
-    AGE_KEY_POINT("연령대별 핵심 포인트"),
-    AGE_PAIN_POINT("연령대별 불편한 점"),
-    AGE_IMPROVEMENT("연령대별 개선 요청");
+    OVERALL_SUMMARY("전체 요약"),
+    POSITIVE_SUMMARY("긍정 요약"),
+    NEGATIVE_SUMMARY("부정 요약"),
+    AGE_SUMMARY("연령대별 요약");
 
     private final String displayName;
 }
