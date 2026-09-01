@@ -33,4 +33,8 @@ public class File extends BaseEntity {
 
     @Column(nullable = false)
     private Integer size;
+
+    //썸네일 이미지 경로
+    @Column
+    private String thumbnailUrl;
 }
