@@ -118,6 +118,23 @@ public class JwtTokenProvider {
         blacklistToken(accessToken, "Access Token", username);
     }
 
+    public String getSubject(String token) {
+        return parseClaims(token).getSubject();
+    }
+
+    public boolean isStoredRefreshToken(String username, String refreshToken) {
+        Object storedRefreshToken = redisService.getValues(REFRESH_KEY_PREFIX + username);
+        return storedRefreshToken != null && storedRefreshToken.toString().equals(refreshToken);
+    }
+
+    public void blacklistRefreshToken(String refreshToken) {
+        blacklistToken(refreshToken, "Refresh Token", getSubject(refreshToken));
+    }
+
+    public void blacklistAccessToken(String accessToken) {
+        blacklistToken(accessToken, "Access Token", getSubject(accessToken));
+    }
+
     private void blacklistToken(String token, String tokenName, String username) {
         long remainingTime = parseClaims(token).getExpiration().getTime() - System.currentTimeMillis();
 
@@ -132,6 +149,14 @@ public class JwtTokenProvider {
 
     public boolean isBlacklisted(String token) {
         return redisService.hasKey(BLACKLIST_KEY_PREFIX + token);
+    }
+
+    private boolean isNotBlacklisted(String token) {
+        if (isBlacklisted(token)) {
+            log.warn("[validateToken] 로그아웃 처리된 JWT 인증 요청");
+            return false;
+        }
+        return true;
     }
 
     public Authentication getAuthentication(String accessToken) {
@@ -169,21 +194,27 @@ public class JwtTokenProvider {
     }
 
     public boolean validateToken(String token) {
+        return validateToken(token, false);
+    }
+
+    public boolean validateTokenAllowExpired(String token) {
+        return validateToken(token, true);
+    }
+
+    private boolean validateToken(String token, boolean allowExpired) {
         try {
             Jwts.parser()
                     .verifyWith(key)
                     .build()
                     .parseSignedClaims(token);
 
-            if (isBlacklisted(token)) {
-                log.warn("[validateToken] 로그아웃 처리된 JWT 인증 요청");
-                return false;
-            }
-
-            return true;
+            return isNotBlacklisted(token);
         } catch (SignatureException | MalformedJwtException e) {
             log.warn("[validateToken] 유효하지 않은 JWT 서명 요청: {}", e.getMessage());
         } catch (ExpiredJwtException e) {
+            if (allowExpired) {
+                return isNotBlacklisted(token);
+            }
             log.warn("[validateToken] 만료된 JWT 인증 요청: {}", e.getMessage());
         } catch (UnsupportedJwtException e) {
             log.warn("[validateToken] 지원되지 않는 JWT 인증 요청: {}", e.getMessage());
