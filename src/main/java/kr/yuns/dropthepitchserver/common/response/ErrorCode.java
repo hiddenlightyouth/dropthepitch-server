@@ -12,6 +12,7 @@ public enum ErrorCode {
     ACCESS_DENIED("C403", "승인되지 않은 사용자입니다.", 403),
     USER_DATA_NOT_FOUND("C4041", "사용자를 찾을 수 없습니다.", 404),
     DATA_NOT_FOUND("C404", "정보를 불러올 수 없습니다.", 404),
+    ANALYZE_DATA_NOT_FOUND("C4042", "파일 분석 결과를 불러올 수 없거나 조회할 수 없는 분석 결과입니다.", 404),
     EMAIL_DUPLICATION("C4091", "이미 존재하는 이메일입니다.", 409),
     UNKNOWN_ERROR("C500", "오류가 발생하였습니다.", 500);
 
