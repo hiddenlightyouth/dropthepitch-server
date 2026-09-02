@@ -7,4 +7,6 @@ import java.util.Optional;
 
 public interface ReportRepository extends JpaRepository<Report, Long> {
     Optional<Report> findByProjectId(Long projectId);
+
+    Optional<Report> findByUuidAndProject_User_Email(String uuid, String email);
 }
