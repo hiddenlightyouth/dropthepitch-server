@@ -36,6 +36,7 @@ public class Analysis extends BaseEntity {
     private AnalysisStatus status;
 
     @OneToMany(mappedBy = "analysis", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("startTime ASC")
     @Builder.Default
     private List<AnalysisTimeline> analysisTimelines = new ArrayList<>();
 
