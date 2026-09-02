@@ -24,6 +24,12 @@ public class AnalyzeService {
     private final AnalysisRepository analysisRepository;
     private final FileRepository fileRepository;
 
+    /**
+     * File을 Project로 조회합니다.
+     *
+     * @param project Project
+     * @return File
+     */
     private File GET_FILE_BY_PROJECT(Project project) {
         Optional<File> file = fileRepository.findByProject(project);
 
@@ -34,6 +40,14 @@ public class AnalyzeService {
         }
     }
 
+    /**
+     * Analysis를 프로젝트 ID로 조회합니다.
+     * 사용자가 생성한 프로젝트만 조회할 수 있습니다.
+     *
+     * @param projectId 프로젝트 ID
+     * @param email 사용자 이메일 주소
+     * @return Analysis
+     */
     private Analysis GET_ANALYSIS_BY_PROJECT_ID(Long projectId, String email) {
         Optional<Analysis> analysis = analysisRepository.findByProject_IdAndProject_User_Email(projectId, email);
 
@@ -44,6 +58,12 @@ public class AnalyzeService {
         }
     }
 
+    /**
+     * 프로젝트의 파일 분석 결과를 조회합니다.
+     * @param email 사용자 이메일 주소
+     * @param projectId 프로젝트 ID
+     * @return 파일 기본 정보, 분석 결과
+     */
     @Transactional(readOnly = true)
     public FileAnalyzeResponseDto getProjectFileAnalyzeResult(String email, Long projectId) {
         Analysis analysis = GET_ANALYSIS_BY_PROJECT_ID(projectId, email);
