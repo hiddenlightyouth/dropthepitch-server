@@ -4,6 +4,7 @@ import kr.yuns.dropthepitchserver.common.response.GlobalResponse;
 import kr.yuns.dropthepitchserver.common.security.AuthenticationToken;
 import kr.yuns.dropthepitchserver.common.security.JwtTokenProvider;
 import kr.yuns.dropthepitchserver.common.security.exception.TokenInvalidException;
+import kr.yuns.dropthepitchserver.user.data.dto.request.RefreshRequestDto;
 import kr.yuns.dropthepitchserver.user.data.dto.request.SignInRequestDto;
 import kr.yuns.dropthepitchserver.user.data.dto.request.SignUpRequestDto;
 import kr.yuns.dropthepitchserver.user.data.dto.response.TokenResponseDto;
@@ -91,6 +92,47 @@ public class AuthService {
 
         Authentication authentication = createAuthentication(user);
         AuthenticationToken authenticationToken = tokenProvider.generateToken(authentication);
+
+        return GlobalResponse.ok(
+                TokenResponseDto.builder()
+                        .accessToken(authenticationToken.getAccessToken())
+                        .refreshToken(authenticationToken.getRefreshToken())
+                        .build());
+    }
+
+    public GlobalResponse<TokenResponseDto> refresh(String bearerToken, RefreshRequestDto refreshRequestDto) {
+        String accessToken = tokenProvider.resolveToken(bearerToken);
+        String refreshToken = refreshRequestDto.getRefreshToken();
+
+        if (accessToken == null || !tokenProvider.validateTokenAllowExpired(accessToken)) {
+            log.error("[refresh] 유효하지 않은 Access Token으로 재발급 시도");
+            throw new TokenInvalidException();
+        }
+
+        if (!tokenProvider.validateToken(refreshToken)) {
+            log.error("[refresh] 유효하지 않은 Refresh Token으로 재발급 시도");
+            throw new TokenInvalidException();
+        }
+
+        String email = tokenProvider.getSubject(refreshToken);
+
+        if (!email.equals(tokenProvider.getSubject(accessToken))) {
+            log.error("[refresh] 소유자가 일치하지 않는 토큰으로 재발급 시도: {}", email);
+            throw new TokenInvalidException();
+        }
+
+        if (!tokenProvider.isStoredRefreshToken(email, refreshToken)) {
+            log.error("[refresh] 저장된 Refresh Token과 일치하지 않는 재발급 시도: {}", email);
+            throw new TokenInvalidException();
+        }
+
+        User user = getUserEntity(email);
+        Authentication authentication = createAuthentication(user);
+
+        tokenProvider.blacklistAccessToken(accessToken);
+        tokenProvider.blacklistRefreshToken(refreshToken);
+        AuthenticationToken authenticationToken = tokenProvider.generateToken(authentication);
+        log.info("[refresh] 토큰 재발급 완료: {}", email);
 
         return GlobalResponse.ok(
                 TokenResponseDto.builder()

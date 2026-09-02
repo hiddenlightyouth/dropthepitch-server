@@ -2,6 +2,7 @@ package kr.yuns.dropthepitchserver.user.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import kr.yuns.dropthepitchserver.common.response.GlobalResponse;
+import kr.yuns.dropthepitchserver.user.data.dto.request.RefreshRequestDto;
 import kr.yuns.dropthepitchserver.user.data.dto.request.SignInRequestDto;
 import kr.yuns.dropthepitchserver.user.data.dto.request.SignUpRequestDto;
 import kr.yuns.dropthepitchserver.user.data.dto.response.TokenResponseDto;
@@ -31,6 +32,13 @@ public class AuthController {
     @Operation(summary = "사용자 로그인")
     public GlobalResponse<TokenResponseDto> signIn(@Valid @RequestBody SignInRequestDto signInRequestDto) {
         return authService.signIn(signInRequestDto);
+    }
+
+    @PostMapping("/refresh")
+    @Operation(summary = "Access Token 재발급")
+    public GlobalResponse<TokenResponseDto> refresh(@RequestHeader(HttpHeaders.AUTHORIZATION) String bearerToken,
+                                                    @Valid @RequestBody RefreshRequestDto refreshRequestDto) {
+        return authService.refresh(bearerToken, refreshRequestDto);
     }
 
     @PostMapping("/logout")
