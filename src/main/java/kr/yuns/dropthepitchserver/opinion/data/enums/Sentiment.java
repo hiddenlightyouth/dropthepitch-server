@@ -3,6 +3,8 @@ package kr.yuns.dropthepitchserver.opinion.data.enums;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+import java.util.Arrays;
+
 @Getter
 @RequiredArgsConstructor
 public enum Sentiment {
@@ -14,4 +16,13 @@ public enum Sentiment {
 
     private final String displayName;
     private final int score;
+
+    //평균 점수 반올림으로 계산해서 가까운 감정 등급으로 환산 .
+    public static Sentiment from(double score) {
+        int rounded = (int) Math.round(score);
+        return Arrays.stream(values())
+                .filter(sentiment -> sentiment.score == rounded)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("지원하지 않는 점수입니다: " + score));
+    }
 }
