@@ -6,6 +6,7 @@ import lombok.Getter;
 public enum ErrorCode {
     INVALID_REQUEST("C001", "잘못된 요청입니다.", 400),
     INVALID_PARAMETER("C002", "유효하지 않은 파라미터입니다.", 400),
+    INVALID_FILE_TYPE("C4002", "지원하지 않는 파일 형식입니다.", 400),
     VERIFICATION_INVALID("C4011", "인증 정보가 유효하지 않습니다.", 401),
     PASSWORD_INVALID("C4012", "비밀번호가 일치하지 않습니다.", 401),
     TOKEN_INVALID("C4013", "유효하지 않은 토큰입니다.", 401),
@@ -16,6 +17,7 @@ public enum ErrorCode {
     OPINION_DATA_NOT_FOUND("C4043", "의견 분석 결과를 불러올 수 없거나 조회할 수 없는 분석 결과입니다.", 404),
     REPORT_DATA_NOT_FOUND("C4044", "리포트를 불러올 수 없거나 조회할 수 없는 리포트입니다.", 404),
     EMAIL_DUPLICATION("C4091", "이미 존재하는 이메일입니다.", 409),
+    FILE_UPLOAD_FAILED("C5001", "파일 업로드에 실패했습니다.", 500),
     UNKNOWN_ERROR("C500", "오류가 발생하였습니다.", 500);
 
     private final String code;

@@ -7,10 +7,14 @@ import kr.yuns.dropthepitchserver.project.data.dto.response.SidebarProjectRespon
 import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectResponseDto;
 import kr.yuns.dropthepitchserver.project.service.ProjectService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @RestController
@@ -28,5 +32,11 @@ public class ProjectController {
     @Operation(summary = "프로젝트 조회")
     public GlobalResponse<ProjectResponseDto> getProject(@PathVariable Long projectId) {
         return GlobalResponse.ok(projectService.getProject(SecurityUtil.getUsername(), projectId));
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "새 작업 시작(파일 업로드)")
+    public GlobalResponse<ProjectResponseDto> createProject(@RequestPart("file") MultipartFile file) {
+        return GlobalResponse.ok(projectService.createProject(SecurityUtil.getUsername(), file));
     }
 }
