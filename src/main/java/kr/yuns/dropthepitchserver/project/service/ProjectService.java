@@ -7,7 +7,6 @@ import kr.yuns.dropthepitchserver.analyze.data.enums.InputType;
 import kr.yuns.dropthepitchserver.analyze.data.repository.AnalysisRepository;
 import kr.yuns.dropthepitchserver.analyze.data.repository.FileRepository;
 import kr.yuns.dropthepitchserver.common.s3.S3Service;
-import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectCreateResponseDto;
 import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectResponseDto;
 import kr.yuns.dropthepitchserver.project.data.dto.response.SidebarProjectResponseDto;
 import kr.yuns.dropthepitchserver.project.data.entity.Project;
@@ -113,10 +112,10 @@ public class ProjectService {
      *
      * @param email 사용자 이메일 주소
      * @param file 업로드할 파일
-     * @return 생성된 프로젝트 ID
+     * @return 프로젝트 기본 정보, 파일 정보, 리포트 ID
      */
     @Transactional
-    public ProjectCreateResponseDto createProject(String email, MultipartFile file) {
+    public ProjectResponseDto createProject(String email, MultipartFile file) {
         User user = GET_USER_BY_EMAIL(email);
         String key = s3Service.upload(file);
         String originalFilename = file.getOriginalFilename();
@@ -146,7 +145,7 @@ public class ProjectService {
 
         log.info("[createProject] 새 작업 생성: projectId={}, email={}", project.getId(), email);
 
-        return new ProjectCreateResponseDto(project.getId());
+        return getProject(email, project.getId());
     }
 
     /**

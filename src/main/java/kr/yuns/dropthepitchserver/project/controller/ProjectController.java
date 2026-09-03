@@ -3,7 +3,6 @@ package kr.yuns.dropthepitchserver.project.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import kr.yuns.dropthepitchserver.common.response.GlobalResponse;
 import kr.yuns.dropthepitchserver.common.security.SecurityUtil;
-import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectCreateResponseDto;
 import kr.yuns.dropthepitchserver.project.data.dto.response.SidebarProjectResponseDto;
 import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectResponseDto;
 import kr.yuns.dropthepitchserver.project.service.ProjectService;
@@ -37,7 +36,7 @@ public class ProjectController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "새 작업 시작(파일 업로드)")
-    public GlobalResponse<ProjectCreateResponseDto> createProject(@RequestPart("file") MultipartFile file) {
+    public GlobalResponse<ProjectResponseDto> createProject(@RequestPart("file") MultipartFile file) {
         return GlobalResponse.ok(projectService.createProject(SecurityUtil.getUsername(), file));
     }
 }
