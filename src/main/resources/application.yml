@@ -16,6 +16,14 @@ spring:
     multipart:
       max-file-size: ${MULTIPART_MAX_FILE_SIZE:1GB}
       max-request-size: ${MULTIPART_MAX_REQUEST_SIZE:1GB}
+  ai:
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY}
+        chat:
+          model: gemini-3.1-flash-lite
+          max-output-tokens: 4096
+          thinking-level: MINIMAL
 
 jwt:
   access-token:
@@ -34,4 +42,5 @@ aws:
   s3:
     bucket: ${AWS_S3_BUCKET:}
     region: ${AWS_S3_REGION:ap-northeast-2}
+
 
