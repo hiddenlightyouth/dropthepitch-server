@@ -24,6 +24,13 @@ spring:
           model: gemini-3.1-flash-lite
           max-output-tokens: 4096
           thinking-level: MINIMAL
+    retry:
+      max-attempts: 3
+      on-client-errors: false
+      backoff:
+        initial-interval: 2s
+        multiplier: 2
+        max-interval: 20s
 
 jwt:
   access-token:

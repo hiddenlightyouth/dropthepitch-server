@@ -18,6 +18,7 @@ public enum ErrorCode {
     REPORT_DATA_NOT_FOUND("C4044", "리포트를 불러올 수 없거나 조회할 수 없는 리포트입니다.", 404),
     EMAIL_DUPLICATION("C4091", "이미 존재하는 이메일입니다.", 409),
     FILE_UPLOAD_FAILED("C5001", "파일 업로드에 실패했습니다.", 500),
+    FILE_ANALYSIS_FAILED("C5002", "파일 분석에 실패했습니다.", 500),
     UNKNOWN_ERROR("C500", "오류가 발생하였습니다.", 500);
 
     private final String code;
