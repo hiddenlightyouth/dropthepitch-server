@@ -6,6 +6,7 @@ import kr.yuns.dropthepitchserver.analyze.data.enums.AnalysisStatus;
 import kr.yuns.dropthepitchserver.analyze.data.enums.InputType;
 import kr.yuns.dropthepitchserver.analyze.data.repository.AnalysisRepository;
 import kr.yuns.dropthepitchserver.analyze.data.repository.FileRepository;
+import kr.yuns.dropthepitchserver.analyze.event.ProjectCreatedEvent;
 import kr.yuns.dropthepitchserver.common.s3.S3Service;
 import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectResponseDto;
 import kr.yuns.dropthepitchserver.project.data.dto.response.SidebarProjectResponseDto;
@@ -20,6 +21,7 @@ import kr.yuns.dropthepitchserver.user.data.exception.UserNotFoundException;
 import kr.yuns.dropthepitchserver.user.data.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,6 +37,7 @@ public class ProjectService {
     private final FileRepository fileRepository;
     private final ReportRepository reportRepository;
     private final AnalysisRepository analysisRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final S3Service s3Service;
 
     /**
@@ -89,8 +92,9 @@ public class ProjectService {
                         f.getName(),
                         f.getSize(),
                         f.getType(),
-                        f.getUrl(),
-                        f.getThumbnailUrl()))
+                        //DB에는 S3 key가 들어있어 브라우저가 열 수 없다. 조회 시점에 임시 주소로 바꾼다.
+                        s3Service.getDownloadUrl(f.getUrl()),
+                        s3Service.getDownloadUrl(f.getThumbnailUrl())))
                 .orElse(null);
 
         String reportId = reportRepository.findByProjectId(projectId)
@@ -142,6 +146,9 @@ public class ProjectService {
         reportRepository.save(Report.builder()
                 .project(project)
                 .build());
+
+        //커밋이 끝난 뒤 분석이 시작되도록 이벤트만 발행한다. 실제 실행은 ProjectCreatedEventListener가 한다.
+        eventPublisher.publishEvent(new ProjectCreatedEvent(project.getId()));
 
         log.info("[createProject] 새 작업 생성: projectId={}, email={}", project.getId(), email);
 
