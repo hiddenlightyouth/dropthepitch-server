@@ -44,7 +44,7 @@ public class TagSelectionPromptLoader {
                 .replace("{{TAGS}}", String.join("\n", tags))
                 .replace("{{ANALYSIS}}", analysis);
     }
-    
+
     private String read(String path) {
         try {
             return new ClassPathResource(path).getContentAsString(StandardCharsets.UTF_8);
