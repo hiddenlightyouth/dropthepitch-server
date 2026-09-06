@@ -10,6 +10,7 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 
 @Configuration
@@ -35,6 +36,15 @@ public class S3Configuration {
     @Bean
     public S3Client s3Client(AwsCredentialsProvider awsCredentialsProvider) {
         return S3Client.builder()
+                .region(Region.of(region))
+                .credentialsProvider(awsCredentialsProvider)
+                .build();
+    }
+
+    //비공개 버킷의 파일을 잠시 열어주는 서명된 주소를 만들 때 사용한다.
+    @Bean
+    public S3Presigner s3Presigner(AwsCredentialsProvider awsCredentialsProvider) {
+        return S3Presigner.builder()
                 .region(Region.of(region))
                 .credentialsProvider(awsCredentialsProvider)
                 .build();
