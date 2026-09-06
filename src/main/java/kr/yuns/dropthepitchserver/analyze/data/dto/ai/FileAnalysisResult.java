@@ -52,8 +52,8 @@ public record FileAnalysisResult(
             String context
     ) { }
 
-    //자료가 사용자에게 요구하는 조건을 일곱 차원으로 나눈 것.
-    //같은 Assumption을 일곱 번 쓰기 때문에 스키마를 자바에서 생성하면 $ref가 나온다.
+    //자료가 사용자에게 요구하는 조건을 여덟 차원으로 나눈 것.
+    //같은 Assumption을 여덟 번 쓰기 때문에 스키마를 자바에서 생성하면 $ref가 나온다.
     public record UserAssumptions(
             List<Assumption> cost,
             List<Assumption> time,
@@ -61,6 +61,7 @@ public record FileAnalysisResult(
             List<Assumption> digital,
             List<Assumption> region,
             List<Assumption> trust,
+            List<Assumption> eligibility,
             List<Assumption> knowledge
     ) { }
 

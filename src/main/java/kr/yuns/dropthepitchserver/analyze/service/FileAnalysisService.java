@@ -22,8 +22,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FileAnalysisService {
 
-    //Gemini에 바이트를 그대로 실어 보낼 수 있는 상한. 넘으면 Files API가 필요하다.
-    private static final int INLINE_MAX_BYTES = 20 * 1024 * 1024;
+    //Gemini는 전체 요청 크기가 100MB(PDF는 50MB)를 넘으면 인라인 전송을 받지 않는다.
+    //프롬프트와 인코딩 여유를 두고 한도보다 낮게 잡는다. 넘는 파일은 Files API가 필요하다.
+    private static final int INLINE_MAX_BYTES = 80 * 1024 * 1024;
+    private static final int INLINE_MAX_BYTES_PDF = 40 * 1024 * 1024;
 
     private final S3Service s3Service;
     private final AnalysisPromptLoader promptLoader;
@@ -44,12 +46,16 @@ public class FileAnalysisService {
             File file = analysisResultService.getFile(projectId);
             InputType type = file.getType();
 
-            byte[] bytes = s3Service.download(file.getUrl());
-            if (bytes.length > INLINE_MAX_BYTES) {
-                log.error("[analyze] 인라인 전송 한도 초과: projectId={}, size={}bytes", projectId, bytes.length);
+            //내려받기 전에 크기부터 본다. 업로드는 1GB까지 허용하므로 먼저 걸러야 메모리가 터지지 않는다.
+            int limit = type == InputType.PDF ? INLINE_MAX_BYTES_PDF : INLINE_MAX_BYTES;
+            if (file.getSize() > limit) {
+                log.error("[analyze] 인라인 전송 한도 초과: projectId={}, type={}, size={}bytes, limit={}bytes",
+                        projectId, type, file.getSize(), limit);
                 analysisResultService.saveFailure(projectId);
                 return;
             }
+
+            byte[] bytes = s3Service.download(file.getUrl());
 
             Media media = new Media(promptLoader.mimeType(type), new ByteArrayResource(bytes));
 
