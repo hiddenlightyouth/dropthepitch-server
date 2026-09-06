@@ -80,7 +80,7 @@ public class Analysis extends BaseEntity {
         this.status = AnalysisStatus.FAILED;
     }
 
-    
+
     public void saveSelectedTags(List<String> selectedTags) {
         this.selectedTags = String.join(",", selectedTags);
     }
