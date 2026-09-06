@@ -11,6 +11,9 @@ import java.util.Optional;
 public interface OpinionRepository extends JpaRepository<Opinion, Long> {
     Optional<Opinion> findByIdAndProject_User_Email(Long opinionId, String email);
 
+    //페르소나가 중복 선별되는 것을 막기 위해 확인.
+    boolean existsByProject_Id(Long projectId);
+
     //연령대별 점수 계산에 페르소나 나이가 필요해 함께 조회.
     @Query("select o from Opinion o join fetch o.persona where o.project.id = :projectId")
     List<Opinion> findAllByProjectIdWithPersona(@Param("projectId") Long projectId);
