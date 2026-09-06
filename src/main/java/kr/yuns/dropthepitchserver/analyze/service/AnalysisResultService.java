@@ -9,8 +9,10 @@ import kr.yuns.dropthepitchserver.analyze.data.exception.AnalysisNotFoundExcepti
 import kr.yuns.dropthepitchserver.analyze.data.exception.FileNotFoundException;
 import kr.yuns.dropthepitchserver.analyze.data.repository.AnalysisRepository;
 import kr.yuns.dropthepitchserver.analyze.data.repository.FileRepository;
+import kr.yuns.dropthepitchserver.analyze.event.AnalysisCompletedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,7 @@ public class AnalysisResultService {
 
     private final AnalysisRepository analysisRepository;
     private final FileRepository fileRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 분석에 필요한 파일 정보를 읽어옵니다.
@@ -64,6 +67,8 @@ public class AnalysisResultService {
                             .content(truncate(segment.content()))
                             .build()));
         }
+        //커밋이 끝난 뒤 페르소나 선별 이벤트 발행
+        eventPublisher.publishEvent(new AnalysisCompletedEvent(projectId));
 
         //analysis.getAnalysisTimelines()를 세면 지연 로딩이 깨어나 쿼리가 한 번 더 나간다.
         log.info("[saveSuccess] 분석 결과 저장: projectId={}, detail={}자, timeline={}건",
