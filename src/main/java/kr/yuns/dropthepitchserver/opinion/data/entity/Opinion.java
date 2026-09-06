@@ -9,6 +9,7 @@ import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "opinion")
@@ -45,6 +46,14 @@ public class Opinion extends BaseEntity {
     @OneToMany(mappedBy = "opinion", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<OpinionDetail> opinionDetails = new ArrayList<>();
+
+    //Analysis, Report와 동일하게 저장 직전에 uuid를 채운다. 없으면 not null 위반으로 저장이 실패한다.
+    @PrePersist
+    public void generateUuid() {
+        if (this.uuid == null) {
+            this.uuid = UUID.randomUUID().toString();
+        }
+    }
 
     public void addOpinionDetail(OpinionDetail opinionDetail) {
         this.opinionDetails.add(opinionDetail);
