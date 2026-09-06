@@ -81,17 +81,21 @@ public class OpinionService {
     public List<OpinionListResponseDto> getOpinionList(String email, Long projectId,
                                                        AgeGroup ageGroup, OpinionSortType sortType) {
         List<Opinion> opinions = opinionRepository.findAllByProjectIdWithPersonaAndTags(projectId, email);
+        //같은 영속성 컨텍스트의 Opinion에 상세 의견을 채워 넣는 조회라 반환값을 쓰지 않는다.
         opinionRepository.findAllByProjectIdWithDetails(projectId);
 
-        Comparator<Opinion> comparator = Comparator.comparingInt(opinion -> opinion.getSentiment().getScore());
-        if (sortType != OpinionSortType.SCORE_ASC) {
-            comparator = comparator.reversed();
-        }
+        //수집 전에는 sentiment가 없다. 아직 응답하지 않은 페르소나는 정렬 방향과 무관하게 뒤로 보낸다.
+        Comparator<Integer> scoreOrder = sortType == OpinionSortType.SCORE_ASC
+                ? Comparator.naturalOrder()
+                : Comparator.reverseOrder();
+        Comparator<Opinion> comparator = Comparator.comparing(
+                opinion -> opinion.getSentiment() == null ? null : opinion.getSentiment().getScore(),
+                Comparator.nullsLast(scoreOrder));
 
         log.info("[getOpinionList] 의견 목록 조회: projectId={}, ageGroup={}, sort={}", projectId, ageGroup, sortType);
 
+        //수집 전 화면에도 선별된 페르소나가 보여야 하므로 sentiment가 없는 의견도 그대로 내려준다.
         return opinions.stream()
-                .filter(opinion -> opinion.getSentiment() != null)
                 .filter(opinion -> ageGroup == null || AgeGroup.from(opinion.getPersona().getAge()) == ageGroup)
                 .sorted(comparator)
                 .map(this::toOpinionListResponse)
@@ -117,8 +121,8 @@ public class OpinionService {
                 .personaProfileUrl(persona.getImageUrl())
                 .personaTags(persona.getPersonaTags().stream().map(PersonaTag::getName).toList())
                 .sentiment(sentiment)
-                .sentimentDisplay(sentiment.getDisplayName())
-                .score(sentiment.getScore())
+                .sentimentDisplay(sentiment == null ? null : sentiment.getDisplayName())
+                .score(sentiment == null ? null : sentiment.getScore())
                 .summary(opinion.getSummary())
                 .details(opinion.getOpinionDetails().stream()
                         .map(detail -> OpinionListResponseDto.OpinionDetailResponseDto.builder()
