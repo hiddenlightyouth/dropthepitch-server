@@ -19,7 +19,7 @@ public enum Sentiment {
 
     //평균 점수 반올림으로 계산해서 가까운 감정 등급으로 환산 .
     public static Sentiment from(double score) {
-        int rounded = (int) Math.round(score);
+        int rounded = (int) Math.round(Math.clamp(score, VERY_NEGATIVE.score, VERY_POSITIVE.score));
         return Arrays.stream(values())
                 .filter(sentiment -> sentiment.score == rounded)
                 .findFirst()

@@ -21,6 +21,17 @@ public interface PersonaRepository extends JpaRepository<Persona, Long> {
     })
     Optional<Persona> findDetailById(Long id);
 
+    @EntityGraph(attributePaths = {
+            "personaBasic",
+            "personaEconomy",
+            "personaPsychology",
+            "personaLifestyle",
+            "personaDigital",
+            "personaDecision",
+            "personaTags"
+    })
+    @Query("select p from Persona p")
+    List<Persona> findAllDetail();
     //선별 태그와 겹치는 개수가 많은 순으로 한 연령대에서 선정 left join으로 태그가 안 겹쳐도 0점으로 처리 동점처리시 랜덤으로 선정
     // excludedIds로 이미 뽑힌 페르소나 구분.
     @Query(value = """

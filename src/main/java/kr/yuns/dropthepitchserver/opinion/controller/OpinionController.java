@@ -1,5 +1,6 @@
 package kr.yuns.dropthepitchserver.opinion.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import kr.yuns.dropthepitchserver.common.response.GlobalResponse;
 import kr.yuns.dropthepitchserver.common.security.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,6 +25,7 @@ public class OpinionController {
     private final OpinionService opinionService;
 
     @GetMapping("/{opinionsId}")
+    @Operation(summary = "페르소나 한 줄 의견 조회")
     public GlobalResponse<PersonaOpinionResponseDto> getPersonaOpinionSummary(@PathVariable Long opinionsId) {
         return GlobalResponse.ok(opinionService.getPersonaOpinionSummary(SecurityUtil.getUsername(), opinionsId));
     }

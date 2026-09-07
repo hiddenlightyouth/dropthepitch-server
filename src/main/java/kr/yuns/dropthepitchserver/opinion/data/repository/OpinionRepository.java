@@ -1,5 +1,6 @@
 package kr.yuns.dropthepitchserver.opinion.data.repository;
 
+import kr.yuns.dropthepitchserver.opinion.data.dto.projection.OpinionCollectionTarget;
 import kr.yuns.dropthepitchserver.opinion.data.entity.Opinion;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -27,6 +28,13 @@ public interface OpinionRepository extends JpaRepository<Opinion, Long> {
     @Query("select o from Opinion o join fetch o.persona where o.project.id = :projectId")
     List<Opinion> findAllByProjectIdWithPersona(@Param("projectId") Long projectId);
 
+    @Query("""
+            select new kr.yuns.dropthepitchserver.opinion.data.dto.projection.OpinionCollectionTarget(o.id, o.persona.id)
+              from Opinion o
+             where o.project.id = :projectId
+               and o.sentiment is null
+            """)
+    List<OpinionCollectionTarget> findCollectionTargets(@Param("projectId") Long projectId);
     //Persona의 1:1 연관관계가 즉시 로딩이라 함께 조회하지 않으면 페르소나마다 추가 조회가 발생.
     //컬렉션 두 개를 동시에 fetch join 할 수 없어 상세 의견은 아래에서 따로 조회.
     @Query("select distinct o from Opinion o " +
