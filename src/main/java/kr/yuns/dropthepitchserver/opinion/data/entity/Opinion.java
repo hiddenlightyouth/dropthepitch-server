@@ -63,4 +63,8 @@ public class Opinion extends BaseEntity {
         this.sentiment = sentiment;
         this.summary = summary;
     }
+    //페르소나 변경
+    public void replacePersona(Persona persona) {
+        this.persona = persona;
+    }
 }

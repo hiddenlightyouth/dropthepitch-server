@@ -48,4 +48,11 @@ public class ProjectController {
     public GlobalResponse<List<SelectedPersonaResponseDto>> getSelectedPersonas(@PathVariable Long projectId) {
         return GlobalResponse.ok(personaService.getSelectedPersonas(SecurityUtil.getUsername(), projectId));
     }
+
+    @PostMapping("/{projectId}/personas/{personaId}/replace")
+    @Operation(summary = "선정된 페르소나 교체", description = "같은 연령대의 다른 페르소나로 바꿉니다. 의견 수집이 시작된 뒤에는 교체할 수 없습니다.")
+    public GlobalResponse<SelectedPersonaResponseDto> replacePersona(@PathVariable Long projectId,
+                                                                     @PathVariable Long personaId) {
+        return GlobalResponse.ok(personaService.replacePersona(SecurityUtil.getUsername(), projectId, personaId));
+    }
 }
