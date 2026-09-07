@@ -1,12 +1,17 @@
 package kr.yuns.dropthepitchserver.persona.service;
 
+import kr.yuns.dropthepitchserver.analyze.data.entity.Analysis;
+import kr.yuns.dropthepitchserver.analyze.data.repository.AnalysisRepository;
 import kr.yuns.dropthepitchserver.opinion.data.entity.Opinion;
 import kr.yuns.dropthepitchserver.opinion.data.repository.OpinionRepository;
 import kr.yuns.dropthepitchserver.persona.data.dto.response.PersonaResponseDto;
 import kr.yuns.dropthepitchserver.persona.data.dto.response.SelectedPersonaResponseDto;
 import kr.yuns.dropthepitchserver.persona.data.entity.*;
+import kr.yuns.dropthepitchserver.persona.data.exception.PersonaCandidateNotFoundException;
 import kr.yuns.dropthepitchserver.persona.data.exception.PersonaNotFoundException;
+import kr.yuns.dropthepitchserver.persona.data.exception.PersonaReplaceNotAllowedException;
 import kr.yuns.dropthepitchserver.persona.data.repository.PersonaRepository;
+import kr.yuns.dropthepitchserver.report.data.enums.AgeGroup;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,9 +25,12 @@ import java.util.Optional;
 @Slf4j
 @RequiredArgsConstructor
 public class PersonaService {
+    private static final List<String> NO_TAG = List.of("");
     private final PersonaRepository personaRepository;
     //선정된 페르소나는 opinion 행으로 남아 있어 그쪽에서 읽는다.
     private final OpinionRepository opinionRepository;
+    //교체할 때 선별에 썼던 태그를 다시 쓰기 위해 필요하다.
+    private final AnalysisRepository analysisRepository;
 
     /**
      * 페르소나 ID로 Persona를 가져옵니다.
@@ -123,16 +131,63 @@ public class PersonaService {
         return opinions.stream()
                 .map(Opinion::getPersona)
                 .sorted(Comparator.comparingInt(Persona::getAge))
-                .map(persona -> SelectedPersonaResponseDto.builder()
-                        .personaId(persona.getId())
-                        .name(persona.getName())
-                        .age(persona.getAge())
-                        .gender(persona.getGender())
-                        .imageUrl(persona.getImageUrl())
-                        .tags(persona.getPersonaTags().stream()
-                                .map(PersonaTag::getName)
-                                .toList())
-                        .build())
+                .map(this::toSelectedPersona)
                 .toList();
+    }
+
+    /**
+     * 선정된 페르소나 한 명을 같은 연령대의 다른 페르소나로 교체.
+     * 선별에 썼던 태그를 재사용
+     */
+    @Transactional
+    public SelectedPersonaResponseDto replacePersona(String email, Long projectId, Long personaId) {
+        Opinion opinion = opinionRepository
+                .findByProject_IdAndPersona_IdAndProject_User_Email(projectId, personaId, email)
+                .orElseThrow(() -> {
+                    log.warn("[replacePersona] 교체 대상 없음: projectId={}, personaId={}", projectId, personaId);
+                    return new PersonaNotFoundException();
+                });
+
+        //의견 수집후 교체 예외처리
+        if (opinionRepository.existsByProject_IdAndSentimentIsNotNull(projectId)) {
+            log.warn("[replacePersona] 수집이 시작되어 교체 불가: projectId={}", projectId);
+            throw new PersonaReplaceNotAllowedException();
+        }
+
+
+        AgeGroup ageGroup = AgeGroup.from(opinion.getPersona().getAge());
+        List<String> tags = analysisRepository.findByProjectId(projectId)
+                .map(Analysis::getSelectedTagList)
+                .orElseGet(List::of);
+
+        Long nextPersonaId = personaRepository.findTopMatchedIds(
+                        tags.isEmpty() ? NO_TAG : tags,
+                        ageGroup.getStartAge(), ageGroup.getEndAge(),
+                        opinionRepository.findPersonaIdsByProjectId(projectId), 1)
+                .stream()
+                .findFirst()
+                .orElseThrow(PersonaCandidateNotFoundException::new);
+
+        //카드에 태그를 실어 보내야 해서 연관관계까지 함께 읽는다.
+        Persona nextPersona = personaRepository.findDetailById(nextPersonaId)
+                .orElseThrow(PersonaNotFoundException::new);
+        opinion.replacePersona(nextPersona);
+
+        log.info("[replacePersona] 페르소나 교체: projectId={}, {} -> {}", projectId, personaId, nextPersonaId);
+
+        return toSelectedPersona(nextPersona);
+    }
+
+    private SelectedPersonaResponseDto toSelectedPersona(Persona persona) {
+        return SelectedPersonaResponseDto.builder()
+                .personaId(persona.getId())
+                .name(persona.getName())
+                .age(persona.getAge())
+                .gender(persona.getGender())
+                .imageUrl(persona.getImageUrl())
+                .tags(persona.getPersonaTags().stream()
+                        .map(PersonaTag::getName)
+                        .toList())
+                .build();
     }
 }
