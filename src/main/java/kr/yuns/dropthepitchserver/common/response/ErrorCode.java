@@ -20,6 +20,9 @@ public enum ErrorCode {
     EMAIL_DUPLICATION("C4091", "이미 존재하는 이메일입니다.", 409),
     OPINION_ALREADY_COLLECTED("C4092", "이미 의견 수집을 요청한 프로젝트입니다.", 409),
     FILE_UPLOAD_FAILED("C5001", "파일 업로드에 실패했습니다.", 500),
+    FILE_ANALYSIS_FAILED("C5002", "파일 분석에 실패했습니다.", 500),
+    FILE_DOWNLOAD_FAILED("C5003", "파일을 불러오지 못했습니다.", 500),
+    TAG_SELECTION_FAILED("C5004", "페르소나 태그 선별에 실패했습니다.", 500),
     UNKNOWN_ERROR("C500", "오류가 발생하였습니다.", 500);
 
     private final String code;

@@ -10,6 +10,7 @@ import kr.yuns.dropthepitchserver.analyze.data.exception.AnalysisNotFoundExcepti
 import kr.yuns.dropthepitchserver.analyze.data.exception.FileNotFoundException;
 import kr.yuns.dropthepitchserver.analyze.data.repository.AnalysisRepository;
 import kr.yuns.dropthepitchserver.analyze.data.repository.FileRepository;
+import kr.yuns.dropthepitchserver.common.s3.S3Service;
 import kr.yuns.dropthepitchserver.project.data.entity.Project;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,8 @@ import java.util.Optional;
 public class AnalyzeService {
     private final AnalysisRepository analysisRepository;
     private final FileRepository fileRepository;
+    //S3 key를 브라우저가 열 수 있는 임시 주소로 바꾸기 위해 사용한다.
+    private final S3Service s3Service;
 
     /**
      * File을 Project로 조회합니다.
@@ -88,10 +91,10 @@ public class AnalyzeService {
                 .uuid(analysis.getUuid())
                 .analysisStatus(analysis.getStatus())
                 .type(file.getType())
-                .downloadUrl(file.getUrl())
+                .downloadUrl(s3Service.getDownloadUrl(file.getUrl()))
                 .name(file.getName())
                 .size(file.getSize())
-                .thumbnailUrl(file.getThumbnailUrl())
+                .thumbnailUrl(s3Service.getDownloadUrl(file.getThumbnailUrl()))
                 .analyzeContent(analysis.getContent())
                 .videoTimeline(videoTimeline)
                 .build();
