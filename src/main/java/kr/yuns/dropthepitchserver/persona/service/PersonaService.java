@@ -51,6 +51,28 @@ public class PersonaService {
     public PersonaResponseDto getPersona(Long personaId) {
         Persona persona = GET_PERSONA_BY_ID(personaId);
 
+        log.info("[getPersona] 페르소나 정보 조회: {}", personaId);
+
+        return toResponseDto(persona);
+    }
+
+    /**
+     * 모든 페르소나의 상세 정보를 조회합니다.
+     *
+     * @return 전체 페르소나 정보(PersonaResponseDto)
+     */
+    @Transactional(readOnly = true)
+    public List<PersonaResponseDto> getAllPersonas() {
+        List<Persona> personas = personaRepository.findAllDetail();
+
+        log.info("[getAllPersonas] 전체 페르소나 정보 조회: {}건", personas.size());
+
+        return personas.stream()
+                .map(this::toResponseDto)
+                .toList();
+    }
+
+    private PersonaResponseDto toResponseDto(Persona persona) {
         PersonaBasic basic = persona.getPersonaBasic();
         PersonaEconomy economy = persona.getPersonaEconomy();
         PersonaPsychology psychology = persona.getPersonaPsychology();
@@ -58,8 +80,6 @@ public class PersonaService {
         PersonaDigital digital = persona.getPersonaDigital();
         PersonaDecision decision = persona.getPersonaDecision();
         List<PersonaTag> personaTags = persona.getPersonaTags();
-
-        log.info("[getPersona] 페르소나 정보 조회: {}", personaId);
 
         return PersonaResponseDto.builder()
                 .personaId(persona.getId())

@@ -2,6 +2,7 @@ package kr.yuns.dropthepitchserver.project.data.entity;
 
 import jakarta.persistence.*;
 import kr.yuns.dropthepitchserver.common.jpa.BaseEntity;
+import kr.yuns.dropthepitchserver.project.data.enums.OpinionCollectionStatus;
 import kr.yuns.dropthepitchserver.project.data.enums.ProjectStatus;
 import kr.yuns.dropthepitchserver.user.data.entity.User;
 import lombok.*;
@@ -27,4 +28,9 @@ public class Project extends BaseEntity {
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private ProjectStatus status;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private OpinionCollectionStatus opinionCollectionStatus = OpinionCollectionStatus.NOT_STARTED;
 }

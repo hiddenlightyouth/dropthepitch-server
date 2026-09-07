@@ -4,6 +4,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Component;
 import java.time.Duration;
+import java.util.Map;
 
 @Component
 public class RedisService {
@@ -33,5 +34,17 @@ public class RedisService {
 
     public boolean hasKey(String key) {
         return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    }
+
+    public void setHashValues(String key, Map<String, String> data) {
+        redisTemplate.opsForHash().putAll(key, data);
+    }
+
+    public void setHashValue(String key, String hashKey, String data) {
+        redisTemplate.opsForHash().put(key, hashKey, data);
+    }
+
+    public String getHashValue(String key, String hashKey) {
+        return (String) redisTemplate.opsForHash().get(key, hashKey);
     }
 }
