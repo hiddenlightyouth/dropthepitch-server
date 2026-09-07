@@ -1,5 +1,8 @@
 package kr.yuns.dropthepitchserver.analyze.service;
 
+import kr.yuns.dropthepitchserver.ai.data.enums.AiPurpose;
+import kr.yuns.dropthepitchserver.ai.service.AiService;
+import kr.yuns.dropthepitchserver.ai.service.dto.SaveAiUsageCommand;
 import kr.yuns.dropthepitchserver.analyze.data.dto.ai.AnalysisCallResult;
 import kr.yuns.dropthepitchserver.analyze.data.dto.ai.FileAnalysisResult;
 import kr.yuns.dropthepitchserver.analyze.data.entity.Analysis;
@@ -10,11 +13,13 @@ import kr.yuns.dropthepitchserver.analyze.data.exception.FileNotFoundException;
 import kr.yuns.dropthepitchserver.analyze.data.repository.AnalysisRepository;
 import kr.yuns.dropthepitchserver.analyze.data.repository.FileRepository;
 import kr.yuns.dropthepitchserver.analyze.event.AnalysisCompletedEvent;
+import kr.yuns.dropthepitchserver.project.data.entity.Project;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 //DB 작업만 담당한다. AI 호출처럼 오래 걸리는 일은 여기에 두지 않는다.
 //트랜잭션을 짧게 유지해 커넥션을 오래 잡지 않기 위해 FileAnalysisService와 분리했다.
@@ -24,9 +29,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class AnalysisResultService {
 
     private static final int TIMELINE_CONTENT_MAX_LENGTH = 500;
+    private static final int TITLE_MAX_LENGTH = 100;
 
     private final AnalysisRepository analysisRepository;
     private final FileRepository fileRepository;
+    private final AiService aiService;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -43,7 +50,8 @@ public class AnalysisResultService {
 
     /**
      * 분석 결과를 저장하고 상태를 완료로 바꿉니다.
-     * 영상이면 타임라인 구간도 함께 저장합니다.
+     * 영상이면 타임라인 구간도 함께 저장하고, 작업 이름을 AI가 지은 제목으로 바꿉니다.
+     * 토큰 사용량도 같은 트랜잭션에서 남깁니다.
      *
      * @param projectId 프로젝트 ID
      * @param callResult AI 호출 결과
@@ -67,6 +75,10 @@ public class AnalysisResultService {
                             .content(truncate(segment.content()))
                             .build()));
         }
+
+        applyAiTitle(analysis.getProject(), result.title());
+        saveUsage(projectId, callResult);
+
         //커밋이 끝난 뒤 페르소나 선별 이벤트 발행
         eventPublisher.publishEvent(new AnalysisCompletedEvent(projectId));
 
@@ -91,6 +103,30 @@ public class AnalysisResultService {
     private Analysis getAnalysis(Long projectId) {
         return analysisRepository.findByProjectId(projectId)
                 .orElseThrow(AnalysisNotFoundException::new);
+    }
+
+    //사이드바에 파일명 대신 AI가 지은 제목이 보이게 한다.
+    private void applyAiTitle(Project project, String title) {
+        //project.title은 not null이다. 여기서 비우면 분석 결과 전체가 롤백되므로 파일명을 그대로 둔다.
+        if (!StringUtils.hasText(title)) {
+            log.warn("[saveSuccess] AI 제목이 비어 파일명을 유지합니다: projectId={}", project.getId());
+            return;
+        }
+
+        //project.title은 varchar(255)라 넘치면 저장 시점에 예외가 난다.
+        project.changeTitle(title.length() <= TITLE_MAX_LENGTH
+                ? title
+                : title.substring(0, TITLE_MAX_LENGTH));
+    }
+
+    //실패한 호출은 토큰 값을 믿을 수 없어 여기서만 기록한다.
+    private void saveUsage(Long projectId, AnalysisCallResult callResult) {
+        aiService.saveAiUsage(new SaveAiUsageCommand(
+                projectId,
+                callResult.model(),
+                AiPurpose.ANALYSIS,
+                callResult.inputTokens(),
+                callResult.outputTokens()));
     }
 
     //세 컬럼 모두 not null이고 endTime이 startTime보다 커야 한다. 어긋난 구간은 저장하지 않는다.
