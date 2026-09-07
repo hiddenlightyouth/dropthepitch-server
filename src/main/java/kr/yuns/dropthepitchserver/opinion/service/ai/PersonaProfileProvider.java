@@ -1,22 +1,67 @@
 package kr.yuns.dropthepitchserver.opinion.service.ai;
 
+import kr.yuns.dropthepitchserver.common.redis.RedisService;
 import kr.yuns.dropthepitchserver.persona.data.dto.response.PersonaResponseDto;
 import kr.yuns.dropthepitchserver.persona.service.PersonaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
 @RequiredArgsConstructor
 public class PersonaProfileProvider {
-    private final PersonaService personaService;
+    private static final String PROFILE_KEY = "persona:profile";
 
-    @Cacheable(cacheNames = "personaProfile", key = "#personaId")
+    private final PersonaService personaService;
+    private final RedisService redisService;
+
+    /**
+     * 애플리케이션 기동 시 모든 페르소나 프로필을 렌더링해 Redis 에 적재합니다.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void loadProfiles() {
+        Map<String, String> profiles = personaService.getAllPersonas().stream()
+                .collect(Collectors.toMap(
+                        persona -> String.valueOf(persona.personaId()),
+                        this::render,
+                        (first, second) -> second));
+
+        if (profiles.isEmpty()) {
+            log.warn("[loadProfiles] 적재할 페르소나가 없습니다.");
+            return;
+        }
+
+        redisService.setHashValues(PROFILE_KEY, profiles);
+
+        log.info("[loadProfiles] 페르소나 프로필 적재 완료: {}건", profiles.size());
+    }
+
+    /**
+     * 페르소나 프로필을 조회합니다.
+     * 적재 이후 추가된 페르소나는 조회 시점에 렌더링해 함께 적재합니다.
+     *
+     * @param personaId 페르소나 ID
+     * @return 프롬프트에 사용할 페르소나 프로필
+     */
     public String getProfile(Long personaId) {
-        log.debug("[getProfile] 페르소나 프로필 렌더링: {}", personaId);
-        return render(personaService.getPersona(personaId));
+        String loaded = redisService.getHashValue(PROFILE_KEY, String.valueOf(personaId));
+
+        if (loaded != null) {
+            return loaded;
+        }
+
+        log.info("[getProfile] 적재되지 않은 페르소나입니다. 조회 시점에 렌더링합니다: {}", personaId);
+
+        String profile = render(personaService.getPersona(personaId));
+        redisService.setHashValue(PROFILE_KEY, String.valueOf(personaId), profile);
+
+        return profile;
     }
 
     private String render(PersonaResponseDto persona) {

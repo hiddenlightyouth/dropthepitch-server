@@ -55,11 +55,6 @@ dependencies {
 
 //    Gemini
     implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
-
-//    Cache
-    implementation 'org.springframework.boot:spring-boot-starter-cache'
-    implementation 'com.github.ben-manes.caffeine:caffeine'
-
 }
 
 tasks.named('test') {
