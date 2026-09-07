@@ -33,4 +33,9 @@ public class Project extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private OpinionCollectionStatus opinionCollectionStatus = OpinionCollectionStatus.NOT_STARTED;
+
+    //업로드 시점에는 파일명이 들어가고, 분석이 끝나면 AI가 지은 제목으로 바뀐다.
+    public void changeTitle(String title) {
+        this.title = title;
+    }
 }
