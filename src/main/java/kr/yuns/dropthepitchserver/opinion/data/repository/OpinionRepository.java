@@ -14,6 +14,15 @@ public interface OpinionRepository extends JpaRepository<Opinion, Long> {
     //페르소나가 중복 선별되는 것을 막기 위해 확인.
     boolean existsByProject_Id(Long projectId);
 
+    //교체할 대상
+    Optional<Opinion> findByProject_IdAndPersona_IdAndProject_User_Email(Long projectId, Long personaId, String email);
+
+    boolean existsByProject_IdAndSentimentIsNotNull(Long projectId); //의견 수집 시작확인
+
+    //이미 포함 되있는 페르소나 Id 수집
+    @Query("select o.persona.id from Opinion o where o.project.id = :projectId")
+    List<Long> findPersonaIdsByProjectId(@Param("projectId") Long projectId);
+
     //연령대별 점수 계산에 페르소나 나이가 필요해 함께 조회.
     @Query("select o from Opinion o join fetch o.persona where o.project.id = :projectId")
     List<Opinion> findAllByProjectIdWithPersona(@Param("projectId") Long projectId);
