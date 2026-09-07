@@ -1,6 +1,9 @@
 package kr.yuns.dropthepitchserver.persona.service;
 
+import kr.yuns.dropthepitchserver.opinion.data.entity.Opinion;
+import kr.yuns.dropthepitchserver.opinion.data.repository.OpinionRepository;
 import kr.yuns.dropthepitchserver.persona.data.dto.response.PersonaResponseDto;
+import kr.yuns.dropthepitchserver.persona.data.dto.response.SelectedPersonaResponseDto;
 import kr.yuns.dropthepitchserver.persona.data.entity.*;
 import kr.yuns.dropthepitchserver.persona.data.exception.PersonaNotFoundException;
 import kr.yuns.dropthepitchserver.persona.data.repository.PersonaRepository;
@@ -9,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,6 +21,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class PersonaService {
     private final PersonaRepository personaRepository;
+    //선정된 페르소나는 opinion 행으로 남아 있어 그쪽에서 읽는다.
+    private final OpinionRepository opinionRepository;
 
     /**
      * 페르소나 ID로 Persona를 가져옵니다.
@@ -102,5 +108,31 @@ public class PersonaService {
                 .community(decision.getCommunity())
                 .healthStatus(decision.getHealthStatus())
                 .build();
+    }
+
+    /**
+     * 프로젝트에 선정된 페르소나 목록을 조회.
+     * 의견 수집 전 화면에서 쓰이며, 아직 선별이 끝나지 않았으면 빈 목록
+     */
+    @Transactional(readOnly = true)
+    public List<SelectedPersonaResponseDto> getSelectedPersonas(String email, Long projectId) {
+        List<Opinion> opinions = opinionRepository.findAllByProjectIdWithPersonaAndTags(projectId, email);
+
+        log.info("[getSelectedPersonas] 선정 페르소나 조회: projectId={}, {}명", projectId, opinions.size());
+
+        return opinions.stream()
+                .map(Opinion::getPersona)
+                .sorted(Comparator.comparingInt(Persona::getAge))
+                .map(persona -> SelectedPersonaResponseDto.builder()
+                        .personaId(persona.getId())
+                        .name(persona.getName())
+                        .age(persona.getAge())
+                        .gender(persona.getGender())
+                        .imageUrl(persona.getImageUrl())
+                        .tags(persona.getPersonaTags().stream()
+                                .map(PersonaTag::getName)
+                                .toList())
+                        .build())
+                .toList();
     }
 }

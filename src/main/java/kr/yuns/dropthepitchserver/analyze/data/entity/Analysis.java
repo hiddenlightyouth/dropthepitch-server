@@ -36,6 +36,10 @@ public class Analysis extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String detail;
 
+    //페르소나 선별에 사용한 태그(콤마 구분). 페르소나를 교체시 필요
+    @Column(columnDefinition = "TEXT")
+    private String selectedTags;
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private AnalysisStatus status;
@@ -74,5 +78,18 @@ public class Analysis extends BaseEntity {
      */
     public void fail() {
         this.status = AnalysisStatus.FAILED;
+    }
+
+
+    public void saveSelectedTags(List<String> selectedTags) {
+        this.selectedTags = String.join(",", selectedTags);
+    }
+
+    //저장해둔 선별 태그를 목록으로(,으로 구분).
+    public List<String> getSelectedTagList() {
+        if (selectedTags == null || selectedTags.isBlank()) {
+            return List.of();
+        }
+        return List.of(selectedTags.split(","));
     }
 }

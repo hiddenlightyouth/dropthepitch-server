@@ -3,6 +3,8 @@ package kr.yuns.dropthepitchserver.project.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import kr.yuns.dropthepitchserver.common.response.GlobalResponse;
 import kr.yuns.dropthepitchserver.common.security.SecurityUtil;
+import kr.yuns.dropthepitchserver.persona.data.dto.response.SelectedPersonaResponseDto;
+import kr.yuns.dropthepitchserver.persona.service.PersonaService;
 import kr.yuns.dropthepitchserver.project.data.dto.response.SidebarProjectResponseDto;
 import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectResponseDto;
 import kr.yuns.dropthepitchserver.project.service.ProjectService;
@@ -22,6 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProjectController {
     private final ProjectService projectService;
+    private final PersonaService personaService;
 
     @GetMapping
     @Operation(summary = "사이드바 내 작업 목록 조회")
@@ -38,5 +41,11 @@ public class ProjectController {
     @Operation(summary = "새 작업 시작(파일 업로드)")
     public GlobalResponse<ProjectResponseDto> createProject(@RequestPart("file") MultipartFile file) {
         return GlobalResponse.ok(projectService.createProject(SecurityUtil.getUsername(), file));
+    }
+
+    @GetMapping("/{projectId}/personas")
+    @Operation(summary = "선정된 페르소나 목록 조회", description = "선별이 끝나기 전에는 빈 목록이 나갑니다.")
+    public GlobalResponse<List<SelectedPersonaResponseDto>> getSelectedPersonas(@PathVariable Long projectId) {
+        return GlobalResponse.ok(personaService.getSelectedPersonas(SecurityUtil.getUsername(), projectId));
     }
 }
