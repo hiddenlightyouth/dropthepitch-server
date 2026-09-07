@@ -18,7 +18,6 @@ public interface OpinionRepository extends JpaRepository<Opinion, Long> {
     //교체할 대상
     Optional<Opinion> findByProject_IdAndPersona_IdAndProject_User_Email(Long projectId, Long personaId, String email);
 
-    boolean existsByProject_IdAndSentimentIsNotNull(Long projectId); //의견 수집 시작확인
 
     //이미 포함 되있는 페르소나 Id 수집
     @Query("select o.persona.id from Opinion o where o.project.id = :projectId")

@@ -11,6 +11,7 @@ import kr.yuns.dropthepitchserver.persona.data.exception.PersonaCandidateNotFoun
 import kr.yuns.dropthepitchserver.persona.data.exception.PersonaNotFoundException;
 import kr.yuns.dropthepitchserver.persona.data.exception.PersonaReplaceNotAllowedException;
 import kr.yuns.dropthepitchserver.persona.data.repository.PersonaRepository;
+import kr.yuns.dropthepitchserver.project.data.enums.OpinionCollectionStatus;
 import kr.yuns.dropthepitchserver.report.data.enums.AgeGroup;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -168,9 +169,10 @@ public class PersonaService {
                     return new PersonaNotFoundException();
                 });
 
-        //의견 수집후 교체 예외처리
-        if (opinionRepository.existsByProject_IdAndSentimentIsNotNull(projectId)) {
-            log.warn("[replacePersona] 수집이 시작되어 교체 불가: projectId={}", projectId);
+        //collectionStatus로 의견 수집 시작상태 확인 후 페르소나 교체를 막는 예외처리
+        OpinionCollectionStatus collectionStatus = opinion.getProject().getOpinionCollectionStatus();
+        if (collectionStatus != OpinionCollectionStatus.NOT_STARTED) {
+            log.warn("[replacePersona] 수집이 시작되어 교체 불가: projectId={}, 상태={}", projectId, collectionStatus);
             throw new PersonaReplaceNotAllowedException();
         }
 
