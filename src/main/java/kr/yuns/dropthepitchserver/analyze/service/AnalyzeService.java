@@ -3,7 +3,9 @@ package kr.yuns.dropthepitchserver.analyze.service;
 import kr.yuns.dropthepitchserver.analyze.data.dto.response.FileAnalyzeResponseDto;
 import kr.yuns.dropthepitchserver.analyze.data.entity.Analysis;
 import kr.yuns.dropthepitchserver.analyze.data.entity.File;
+import kr.yuns.dropthepitchserver.analyze.data.enums.AnalysisStatus;
 import kr.yuns.dropthepitchserver.analyze.data.enums.InputType;
+import kr.yuns.dropthepitchserver.analyze.data.exception.AnalysisNotCompletedException;
 import kr.yuns.dropthepitchserver.analyze.data.exception.AnalysisNotFoundException;
 import kr.yuns.dropthepitchserver.analyze.data.exception.FileNotFoundException;
 import kr.yuns.dropthepitchserver.analyze.data.repository.AnalysisRepository;
@@ -13,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -92,5 +95,28 @@ public class AnalyzeService {
                 .analyzeContent(analysis.getContent())
                 .videoTimeline(videoTimeline)
                 .build();
+    }
+
+    /**
+     * 완료된 파일 분석 결과 본문을 조회합니다.
+     *
+     * @param projectId 프로젝트 ID
+     * @return 분석 결과 본문
+     */
+    @Transactional(readOnly = true)
+    public String getCompletedAnalysisContent(Long projectId) {
+        Analysis analysis = analysisRepository.findByProjectId(projectId)
+                .orElseThrow(() -> {
+                    log.warn("[getCompletedAnalysisContent] 분석 결과 조회 실패: projectId={}", projectId);
+                    return new AnalysisNotFoundException();
+                });
+
+        if (analysis.getStatus() != AnalysisStatus.COMPLETED || !StringUtils.hasText(analysis.getContent())) {
+            log.warn("[getCompletedAnalysisContent] 분석이 완료되지 않았습니다: projectId={}, status={}",
+                    projectId, analysis.getStatus());
+            throw new AnalysisNotCompletedException();
+        }
+
+        return analysis.getContent();
     }
 }
