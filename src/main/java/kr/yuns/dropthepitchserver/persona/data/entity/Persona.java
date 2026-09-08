@@ -29,10 +29,6 @@ public class Persona extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private Gender gender;
 
-    @Column(nullable = false)
-    @Deprecated
-    private String imageUrl;
-
     @OneToOne(mappedBy = "persona", cascade = CascadeType.ALL, orphanRemoval = true)
     private PersonaBasic personaBasic;
 
