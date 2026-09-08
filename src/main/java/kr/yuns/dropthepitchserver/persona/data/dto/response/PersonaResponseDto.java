@@ -11,6 +11,7 @@ public record PersonaResponseDto(
         String name,
         Integer age,
         Gender gender,
+        @Deprecated
         String imageUrl,
         List<String> tags,
 

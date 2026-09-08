@@ -13,6 +13,7 @@ public record SelectedPersonaResponseDto(
         String name,
         Integer age,
         Gender gender,
+        @Deprecated
         String imageUrl,
         List<String> tags
 ) { }
