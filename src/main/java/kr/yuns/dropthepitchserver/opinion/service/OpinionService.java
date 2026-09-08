@@ -58,7 +58,6 @@ public class OpinionService {
 
         return PersonaOpinionResponseDto.builder()
                 .personaId(persona.getId())
-                .personaProfileUrl(persona.getImageUrl())
                 .personaName(persona.getName())
                 .personaAge(persona.getAge())
                 .sentimentEnum(sentiment)
@@ -118,7 +117,6 @@ public class OpinionService {
                 .personaName(persona.getName())
                 .personaAge(persona.getAge())
                 .personaGender(persona.getGender())
-                .personaProfileUrl(persona.getImageUrl())
                 .personaTags(persona.getPersonaTags().stream().map(PersonaTag::getName).toList())
                 .sentiment(sentiment)
                 .sentimentDisplay(sentiment == null ? null : sentiment.getDisplayName())
