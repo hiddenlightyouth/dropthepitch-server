@@ -37,4 +37,9 @@ public class File extends BaseEntity {
     //썸네일 이미지 경로
     @Column
     private String thumbnailUrl;
+
+    //업로드 직후에는 비어 있고, 썸네일이 만들어지면 S3 key가 들어간다.
+    public void updateThumbnailUrl(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
+    }
 }
