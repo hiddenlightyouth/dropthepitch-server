@@ -21,9 +21,7 @@ public class PersonaProfileProvider {
     private final PersonaService personaService;
     private final RedisService redisService;
 
-    /**
-     * 애플리케이션 기동 시 모든 페르소나 프로필을 렌더링해 Redis 에 적재합니다.
-     */
+    // 모든 페르소나 프로필을 Redis에 저장
     @EventListener(ApplicationReadyEvent.class)
     public void loadProfiles() {
         Map<String, String> profiles = personaService.getAllPersonas().stream()
@@ -43,11 +41,11 @@ public class PersonaProfileProvider {
     }
 
     /**
-     * 페르소나 프로필을 조회합니다.
-     * 적재 이후 추가된 페르소나는 조회 시점에 렌더링해 함께 적재합니다.
+     * 페르소나 프로필 조회
+     * 저장되지 않은 페르소나는 조회 시점에 저장
      *
-     * @param personaId 페르소나 ID
-     * @return 프롬프트에 사용할 페르소나 프로필
+     * @param personaId persona ID
+     * @return persona profile
      */
     public String getProfile(Long personaId) {
         String loaded = redisService.getHashValue(PROFILE_KEY, String.valueOf(personaId));
@@ -56,7 +54,7 @@ public class PersonaProfileProvider {
             return loaded;
         }
 
-        log.info("[getProfile] 적재되지 않은 페르소나입니다. 조회 시점에 렌더링합니다: {}", personaId);
+        log.info("[getProfile] Redis에 없는 페르소나: {}", personaId);
 
         String profile = render(personaService.getPersona(personaId));
         redisService.setHashValue(PROFILE_KEY, String.valueOf(personaId), profile);

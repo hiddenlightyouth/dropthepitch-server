@@ -1,88 +1,78 @@
 package kr.yuns.dropthepitchserver.opinion.service.ai;
 
-import kr.yuns.dropthepitchserver.ai.data.enums.AiPurpose;
-import kr.yuns.dropthepitchserver.ai.service.AiService;
-import kr.yuns.dropthepitchserver.ai.service.dto.SaveAiUsageCommand;
+import kr.yuns.dropthepitchserver.opinion.data.exception.OpinionCollectionFailedException;
 import kr.yuns.dropthepitchserver.opinion.service.ai.dto.OpinionAiResultDto;
-import lombok.RequiredArgsConstructor;
+import kr.yuns.dropthepitchserver.opinion.service.ai.dto.OpinionCallResult;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.SystemMessage;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.metadata.ChatResponseMetadata;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.converter.BeanOutputConverter;
-import org.springframework.ai.google.genai.GoogleGenAiChatModel;
+import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 @Slf4j
-@RequiredArgsConstructor
 public class OpinionAiClient {
-    private final OpinionPromptLoader opinionPromptLoader;
-    private final GoogleGenAiChatModel chatModel;
+    private final ChatClient chatClient;
+    private final ObjectMapper objectMapper;
+    private final OpinionPromptLoader promptLoader;
     private final PersonaProfileProvider personaProfileProvider;
-    private final AiService aiService;
 
-    private final BeanOutputConverter<OpinionAiResultDto> converter =
-            new BeanOutputConverter<>(OpinionAiResultDto.class);
-
-    /**
-     * 페르소나 의견 수집을 위해 AI 모델을 호출합니다.
-     *
-     * @param projectId 프로젝트 ID
-     * @param personaId Persona
-     * @param userMsg 요청 MSG
-     * @return OpinionAiResultDto
-     */
-    public OpinionAiResultDto callAiModel(Long projectId, Long personaId, String userMsg) {
-        String systemPrompt = String.join(System.lineSeparator(),
-                opinionPromptLoader.systemPrompt(),
-                personaProfileProvider.getProfile(personaId),
-                converter.getFormat());
-
-        List<Message> messages = List.of(
-                new SystemMessage(systemPrompt),
-                new UserMessage(userMsg)
-        );
-
-        Prompt prompt = Prompt.builder()
-                .messages(messages)
-                .build();
-
-        ChatResponse response = chatModel.call(prompt);
-        saveAiUsage(projectId, response);
-
-        String content = response.getResult().getOutput().getText();
-        log.debug("[callAiModel] 페르소나 {} 의견 수집: {}", personaId, content);
-
-        return converter.convert(content);
+    public OpinionAiClient(ChatClient.Builder chatClientBuilder,
+                           ObjectMapper objectMapper,
+                           OpinionPromptLoader promptLoader,
+                           PersonaProfileProvider personaProfileProvider) {
+        this.chatClient = chatClientBuilder.build();
+        this.objectMapper = objectMapper;
+        this.promptLoader = promptLoader;
+        this.personaProfileProvider = personaProfileProvider;
     }
 
-    /**
-     * AI 호출 로그를 저장합니다.
-     *
-     * @param projectId 프로젝트 ID
-     * @param response AI 응답
-     */
-    private void saveAiUsage(Long projectId, ChatResponse response) {
-        ChatResponseMetadata metadata = response.getMetadata();
-        Usage usage = metadata.getUsage();
-
+    public OpinionCallResult collectOpinion(Long personaId, String ideaDescription) {
         try {
-            aiService.saveAiUsage(new SaveAiUsageCommand(
-                    projectId,
-                    metadata.getModel(),
-                    AiPurpose.OPINION,
-                    usage.getPromptTokens(),
-                    usage.getCompletionTokens()
-            ));
+            var options = GoogleGenAiChatOptions.builder()
+                    .responseMimeType("application/json")
+                    .responseSchema(promptLoader.schema());
+
+            ChatResponse chatResponse = chatClient.prompt()
+                    .options(options)
+                    .system(promptLoader.systemPrompt(personaProfileProvider.getProfile(personaId)))
+                    .user(ideaDescription)
+                    .call()
+                    .chatResponse();
+
+            if (chatResponse == null || chatResponse.getResult() == null) {
+                log.error("[collectOpinion] Gemini가 빈 응답을 반환함: personaId={}", personaId);
+                throw new OpinionCollectionFailedException();
+            }
+
+            String json = chatResponse.getResult().getOutput().getText();
+            log.debug("[collectOpinion] 페르소나 {} 의견 수집: {}", personaId, json);
+
+            OpinionAiResultDto result = objectMapper.readValue(json, OpinionAiResultDto.class);
+
+            Usage usage = chatResponse.getMetadata().getUsage();
+            return new OpinionCallResult(
+                    result,
+                    chatResponse.getMetadata().getModel(),
+                    tokenCount(usage.getPromptTokens()),
+                    tokenCount(usage.getCompletionTokens()));
+
+        } catch (OpinionCollectionFailedException e) {
+            throw e;
         } catch (Exception e) {
-            log.warn("[saveAiUsage] AI 사용량 저장 실패, 의견 수집은 계속합니다: projectId={}", projectId, e);
+            log.error("[collectOpinion] Gemini를 호출할 수 없음: personaId={}, cause={}", personaId,
+                    e.getCause() != null ? e.getCause().getMessage() : e.getMessage(), e);
+            throw new OpinionCollectionFailedException();
         }
+    }
+
+    private int tokenCount(Integer value) {
+        if (value == null) {
+            log.warn("[collectOpinion] 토큰 사용량 정보를 불러올 수 없음");
+            return 0;
+        }
+        return value;
     }
 }
