@@ -10,6 +10,7 @@ import kr.yuns.dropthepitchserver.opinion.data.entity.OpinionDetail;
 import kr.yuns.dropthepitchserver.opinion.data.enums.Sentiment;
 import kr.yuns.dropthepitchserver.opinion.data.exception.OpinionNotFoundException;
 import kr.yuns.dropthepitchserver.opinion.data.repository.OpinionRepository;
+import kr.yuns.dropthepitchserver.opinion.event.OpinionCollectionCompletedEvent;
 import kr.yuns.dropthepitchserver.opinion.service.ai.OpinionAiClient;
 import kr.yuns.dropthepitchserver.opinion.service.ai.dto.OpinionAiResultDto;
 import kr.yuns.dropthepitchserver.opinion.service.ai.dto.OpinionCallResult;
@@ -18,6 +19,7 @@ import kr.yuns.dropthepitchserver.project.data.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
@@ -36,6 +38,7 @@ public class OpinionCollectionRunner {
     private final TransactionTemplate transactionTemplate;
     private final ProjectRepository projectRepository;
     private final AiService aiService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Qualifier(OpinionAsyncConfiguration.OPINION_COLLECTION_EXECUTOR)
     private final Executor opinionCollectionExecutor;
@@ -70,10 +73,16 @@ public class OpinionCollectionRunner {
         log.info("[finish] 의견 수집 완료: projectId={}, 성공 {}/{}, 소요 {}ms",
                 projectId, succeeded, futures.size(), System.currentTimeMillis() - startedAt);
 
-        projectRepository.finishOpinionCollection(projectId,
-                succeeded == futures.size()
-                        ? OpinionCollectionStatus.COMPLETED
-                        : OpinionCollectionStatus.FAILED);
+        OpinionCollectionStatus status = succeeded == futures.size()
+                ? OpinionCollectionStatus.COMPLETED
+                : OpinionCollectionStatus.FAILED;
+
+        projectRepository.finishOpinionCollection(projectId, status);
+
+        //모두 의견 응답을 가졌을 때 리포트 생성 처리
+        if (status == OpinionCollectionStatus.COMPLETED) {
+            eventPublisher.publishEvent(new OpinionCollectionCompletedEvent(projectId));
+        }
     }
 
     /**
