@@ -1,5 +1,8 @@
 package kr.yuns.dropthepitchserver.opinion.service;
 
+import kr.yuns.dropthepitchserver.ai.data.enums.AiPurpose;
+import kr.yuns.dropthepitchserver.ai.service.AiService;
+import kr.yuns.dropthepitchserver.ai.service.dto.SaveAiUsageCommand;
 import kr.yuns.dropthepitchserver.opinion.config.OpinionAsyncConfiguration;
 import kr.yuns.dropthepitchserver.opinion.data.dto.projection.OpinionCollectionTarget;
 import kr.yuns.dropthepitchserver.opinion.data.entity.Opinion;
@@ -10,6 +13,7 @@ import kr.yuns.dropthepitchserver.opinion.data.repository.OpinionRepository;
 import kr.yuns.dropthepitchserver.opinion.event.OpinionCollectionCompletedEvent;
 import kr.yuns.dropthepitchserver.opinion.service.ai.OpinionAiClient;
 import kr.yuns.dropthepitchserver.opinion.service.ai.dto.OpinionAiResultDto;
+import kr.yuns.dropthepitchserver.opinion.service.ai.dto.OpinionCallResult;
 import kr.yuns.dropthepitchserver.project.data.enums.OpinionCollectionStatus;
 import kr.yuns.dropthepitchserver.project.data.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,17 +37,16 @@ public class OpinionCollectionRunner {
     private final OpinionRepository opinionRepository;
     private final TransactionTemplate transactionTemplate;
     private final ProjectRepository projectRepository;
+    private final AiService aiService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Qualifier(OpinionAsyncConfiguration.OPINION_COLLECTION_EXECUTOR)
     private final Executor opinionCollectionExecutor;
 
-    //HTTP 타임아웃 120s * 재시도 3회 + 백오프(2s, 10s) 보다 넉넉하게 잡습니다.
     private static final long CALL_TIMEOUT_SECONDS = 420L;
 
     /**
-     * 페르소나별 의견 수집을 백그라운드에서 실행합니다.
-     * 호출 즉시 반환하고, 각 페르소나의 응답은 도착하는 즉시 개별 트랜잭션으로 저장됩니다.
+     * 클라이언트가 호출하면 즉시 응답하고, 백그라운드에서 페르소나 의견을 수집합니다.
      *
      * @param projectId 프로젝트 ID
      * @param targets 수집 대상 의견/페르소나 목록
@@ -83,7 +86,7 @@ public class OpinionCollectionRunner {
     }
 
     /**
-     * 페르소나 한 명의 의견을 수집하고 곧바로 저장합니다.
+     * 의견 수집이 완료되는 즉시 저장
      *
      * @param projectId 프로젝트 ID
      * @param target 수집 대상 의견/페르소나
@@ -92,13 +95,16 @@ public class OpinionCollectionRunner {
      */
     private CompletableFuture<Boolean> collectOne(Long projectId, OpinionCollectionTarget target, String ideaDescription) {
         return CompletableFuture
-                .supplyAsync(() -> opinionAiClient.callAiModel(projectId, target.personaId(), ideaDescription),
+                .supplyAsync(() -> opinionAiClient.collectOpinion(target.personaId(), ideaDescription),
                         opinionCollectionExecutor)
                 .orTimeout(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .thenApply(result -> {
-                    transactionTemplate.executeWithoutResult(status -> applyResult(target.opinionId(), result));
-                    log.debug("[collectOne] 의견 저장 완료: opinionId={}, personaId={}",
-                            target.opinionId(), target.personaId());
+                .thenApply(callResult -> {
+                    transactionTemplate.executeWithoutResult(status ->
+                            applyResult(target.opinionId(), callResult.result()));
+                    saveAiUsageQuietly(projectId, callResult);
+                    log.debug("[collectOne] 의견 저장 완료: opinionId={}, personaId={}, model={}, inputTokens={}, outputTokens={}",
+                            target.opinionId(), target.personaId(),
+                            callResult.model(), callResult.inputTokens(), callResult.outputTokens());
                     return true;
                 })
                 .exceptionally(throwable -> {
@@ -106,6 +112,19 @@ public class OpinionCollectionRunner {
                             target.opinionId(), target.personaId(), throwable);
                     return false;
                 });
+    }
+
+    private void saveAiUsageQuietly(Long projectId, OpinionCallResult callResult) {
+        try {
+            aiService.saveAiUsage(new SaveAiUsageCommand(
+                    projectId,
+                    callResult.model(),
+                    AiPurpose.OPINION,
+                    callResult.inputTokens(),
+                    callResult.outputTokens()));
+        } catch (Exception e) {
+            log.warn("[saveAiUsageQuietly] AI 사용량을 저장할 수 없음: projectId={}", projectId, e);
+        }
     }
 
     private void applyResult(Long opinionId, OpinionAiResultDto result) {

@@ -10,25 +10,30 @@ import java.nio.charset.StandardCharsets;
 @Component
 @Slf4j
 public class OpinionPromptLoader {
-    private static final String SYSTEM_PROMPT_PATH = "prompts/opinion-system.txt";
 
-    private final String systemPrompt;
+    private final String systemPromptTemplate;
+    private final String schema;
 
     public OpinionPromptLoader() {
-        this.systemPrompt = read();
-
-        log.info("[OpinionPromptLoader] 로딩 완료: system={}자", systemPrompt.length());
+        this.systemPromptTemplate = read("prompts/opinion-system.txt");
+        this.schema = read("schema/opinion-schema.json");
+        log.info("[OpinionPromptLoader] 로딩 완료: system={}자, schema={}자",
+                systemPromptTemplate.length(), schema.length());
     }
 
-    public String systemPrompt() {
-        return systemPrompt;
+    public String schema() {
+        return schema;
     }
 
-    private String read() {
+    public String systemPrompt(String personaProfile) {
+        return systemPromptTemplate.replace("{{PERSONA}}", personaProfile);
+    }
+
+    private String read(String path) {
         try {
-            return new ClassPathResource(SYSTEM_PROMPT_PATH).getContentAsString(StandardCharsets.UTF_8);
+            return new ClassPathResource(path).getContentAsString(StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new IllegalStateException("[OpinionPromptLoader] 프롬프트 파일 로드 실패: " + SYSTEM_PROMPT_PATH, e);
+            throw new IllegalStateException("프롬프트 파일을 읽지 못했습니다: " + path, e);
         }
     }
 }

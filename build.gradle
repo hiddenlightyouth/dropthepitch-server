@@ -55,6 +55,14 @@ dependencies {
 
 //    Gemini
     implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
+
+//    썸네일 추출. ffmpeg 바이너리가 jar에 들어있어 서버에 따로 설치하지 않는다.
+//    classifier로 운영체제별 바이너리를 고른다. 맞는 것이 없으면 실행 시 UnsatisfiedLinkError가 난다.
+//    개발은 맥(arm64), 배포 서버는 리눅스(x86_64)라 둘만 넣는다.
+    implementation 'org.apache.pdfbox:pdfbox:3.0.8'
+    implementation 'org.bytedeco:javacv:1.5.14'
+    implementation group: 'org.bytedeco', name: 'ffmpeg', version: '8.1.2-1.5.14', classifier: 'linux-x86_64'
+    implementation group: 'org.bytedeco', name: 'ffmpeg', version: '8.1.2-1.5.14', classifier: 'macosx-arm64'
 }
 
 tasks.named('test') {

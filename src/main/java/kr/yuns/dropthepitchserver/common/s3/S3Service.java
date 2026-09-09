@@ -67,6 +67,31 @@ public class S3Service {
     }
 
     /**
+     * 서버가 만들어낸 파일을 S3에 올립니다.
+     * 업로드와 달리 확장자 검증을 하지 않습니다. 사용자가 준 파일이 아니라 우리가 만든 것이기 때문입니다.
+     *
+     * @param bytes 올릴 내용
+     * @param key S3에 저장할 key
+     * @param contentType 내용 형식
+     */
+    public void upload(byte[] bytes, String key, String contentType) {
+        try {
+            s3Client.putObject(
+                    PutObjectRequest.builder()
+                            .bucket(bucket)
+                            .key(key)
+                            .contentType(contentType)
+                            .build(),
+                    RequestBody.fromBytes(bytes));
+        } catch (SdkException e) {
+            log.error("[S3Service] S3 업로드 실패: key={}, message={}", key, e.getMessage());
+            throw new FileUploadFailedException();
+        }
+
+        log.info("[S3Service] S3 업로드 완료: key={}, size={}bytes", key, bytes.length);
+    }
+
+    /**
      * S3에 저장된 파일을 바이트 배열로 내려받습니다.
      * AI에 인라인으로 실어 보낼 파일만 사용하므로 메모리에 한 번에 올립니다.
      *
