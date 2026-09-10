@@ -1,19 +1,25 @@
 package kr.yuns.dropthepitchserver.analyze.service.thumbnail;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.bytedeco.ffmpeg.global.avutil;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
+import org.bytedeco.javacv.FFmpegLogCallback;
 import org.bytedeco.javacv.Frame;
 import org.bytedeco.javacv.Java2DFrameConverter;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;
 
-//영상에서 한 프레임을 뽑는다.
-//ffmpeg 바이너리가 의존성(org.bytedeco:ffmpeg)에 들어있어 서버에 따로 설치할 것이 없다.
-//순수 자바 디코더(JCodec)도 시도했으나 우리 영상 두 개를 모두 읽지 못해 ffmpeg를 쓴다.
 @Component
 @Slf4j
 public class VideoThumbnailExtractor {
+
+    @PostConstruct
+    void configureFfmpegLog() {
+        FFmpegLogCallback.set();
+        FFmpegLogCallback.setLevel(avutil.AV_LOG_ERROR);
+    }
 
     /**
      * 영상 중간 지점의 한 프레임을 썸네일로 만듭니다.
@@ -22,7 +28,6 @@ public class VideoThumbnailExtractor {
      * @return JPG 바이트
      */
     public byte[] extract(byte[] bytes) throws Exception {
-        //파일이 아니라 메모리에서 바로 읽는다. 임시 파일을 만들고 지울 필요가 없다.
         try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(new ByteArrayInputStream(bytes))) {
             grabber.start();
 

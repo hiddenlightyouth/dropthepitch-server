@@ -29,6 +29,7 @@ public class AnalyzeService {
     private final FileRepository fileRepository;
     //S3 key를 브라우저가 열 수 있는 임시 주소로 바꾸기 위해 사용한다.
     private final S3Service s3Service;
+    private final AnalysisDetailReader analysisDetailReader;
 
     /**
      * File을 Project로 조회합니다.
@@ -74,6 +75,7 @@ public class AnalyzeService {
     public FileAnalyzeResponseDto getProjectFileAnalyzeResult(String email, Long projectId) {
         Analysis analysis = GET_ANALYSIS_BY_PROJECT_ID(projectId, email);
         File file = GET_FILE_BY_PROJECT(analysis.getProject());
+        AnalysisDetailReader.AnalysisDisplay display = analysisDetailReader.read(analysis.getDetail());
 
         List<FileAnalyzeResponseDto.VideoTimelineResponseDto> videoTimeline = null;
 
@@ -96,7 +98,9 @@ public class AnalyzeService {
                 .size(file.getSize())
                 .thumbnailUrl(s3Service.getDownloadUrl(file.getThumbnailUrl()))
                 .analyzeContent(analysis.getContent())
+                .tags(display.keywords())
                 .videoTimeline(videoTimeline)
+                .analysisDetails(display.details())
                 .build();
     }
 
