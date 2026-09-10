@@ -15,6 +15,7 @@ import kr.yuns.dropthepitchserver.project.data.dto.response.SidebarProjectRespon
 import kr.yuns.dropthepitchserver.project.data.entity.Project;
 import kr.yuns.dropthepitchserver.project.data.enums.OpinionCollectionStatus;
 import kr.yuns.dropthepitchserver.project.data.enums.ProjectStatus;
+import kr.yuns.dropthepitchserver.project.data.exception.InvalidProjectTitleException;
 import kr.yuns.dropthepitchserver.project.data.exception.ProjectNotFoundException;
 import kr.yuns.dropthepitchserver.project.data.repository.ProjectRepository;
 import kr.yuns.dropthepitchserver.report.data.entity.Report;
@@ -27,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Optional;
@@ -35,6 +37,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Slf4j
 public class ProjectService {
+    private static final int TITLE_MIN_LENGTH = 6;
+    private static final int TITLE_MAX_LENGTH = 255;
+
     private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
     private final FileRepository fileRepository;
@@ -87,17 +92,12 @@ public class ProjectService {
                 });
     }
     /**
-     * 프로젝트 제목을 사용자가 정한 이름으로 바꿉니다.
-     *
-     * @param email 사용자 이메일 주소
-     * @param projectId 프로젝트 ID
-     * @param title 새 제목
-     * @return 사이드바 항목 형태의 프로젝트 정보
+     * 프로젝트 제목을 사용자가 정한 이름으로 바꿈.
      */
     @Transactional
     public SidebarProjectResponseDto changeTitle(String email, Long projectId, String title) {
         Project project = getProjectEntity(email, projectId);
-        project.changeTitle(title);
+        project.changeTitle(resolveTitle(project, title));
 
         log.info("[changeTitle] 프로젝트 제목 변경: projectId={}", projectId);
 
@@ -107,6 +107,20 @@ public class ProjectService {
                 .status(project.getStatus())
                 .date(project.getUpdatedAt())
                 .build();
+    }
+
+    private String resolveTitle(Project project, String title) {
+        if (!StringUtils.hasText(title)) {
+            log.info("[changeTitle] 제목이 비어 있어 기존 제목을 유지합니다: projectId={}", project.getId());
+            return project.getTitle();
+        }
+
+        String trimmed = title.trim();
+        if (trimmed.length() < TITLE_MIN_LENGTH || trimmed.length() > TITLE_MAX_LENGTH) {
+            log.warn("[changeTitle] 제목 길이가 벗어났습니다: projectId={}, 길이={}", project.getId(), trimmed.length());
+            throw new InvalidProjectTitleException();
+        }
+        return trimmed;
     }
 
     @Transactional(readOnly = true)

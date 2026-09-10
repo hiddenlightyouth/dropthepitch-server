@@ -1,7 +1,6 @@
 package kr.yuns.dropthepitchserver.project.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
-import jakarta.validation.Valid;
 import kr.yuns.dropthepitchserver.common.response.GlobalResponse;
 import kr.yuns.dropthepitchserver.common.security.SecurityUtil;
 import kr.yuns.dropthepitchserver.project.data.dto.request.UpdateTitleRequestDto;
@@ -38,7 +37,7 @@ public class ProjectController {
     @PatchMapping("/{projectId}")
     @Operation(summary = "프로젝트 이름 변경")
     public GlobalResponse<SidebarProjectResponseDto> editTitle(@PathVariable Long projectId,
-                                                               @Valid @RequestBody UpdateTitleRequestDto request) {
+                                                               @RequestBody UpdateTitleRequestDto request) {
         return GlobalResponse.ok(
                 projectService.changeTitle(SecurityUtil.getUsername(), projectId, request.getTitle()));
     }
