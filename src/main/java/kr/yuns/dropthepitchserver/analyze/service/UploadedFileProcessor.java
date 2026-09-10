@@ -1,7 +1,6 @@
 package kr.yuns.dropthepitchserver.analyze.service;
 
 import kr.yuns.dropthepitchserver.analyze.data.entity.File;
-import kr.yuns.dropthepitchserver.analyze.data.enums.InputType;
 import kr.yuns.dropthepitchserver.common.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,10 +16,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class UploadedFileProcessor {
 
-    //Gemini는 전체 요청 크기가 100MB(PDF는 50MB)를 넘으면 인라인 전송을 받지 않는다.
-    //프롬프트와 인코딩 여유를 두고 한도보다 낮게 잡는다. 넘는 파일은 Files API가 필요하다.
-    private static final int MAX_BYTES = 80 * 1024 * 1024;
-    private static final int MAX_BYTES_PDF = 40 * 1024 * 1024;
+    //Gemini는 전체 요청 크기가 100MB를 넘으면 인라인 전송을 받지 않는다.
+    private static final int MAX_BYTES = 100 * 1024 * 1024;
 
     private final S3Service s3Service;
     private final AnalysisResultService analysisResultService;
@@ -60,7 +57,7 @@ public class UploadedFileProcessor {
     }
 
     private boolean isTooLarge(File file) {
-        return file.getSize() > (file.getType() == InputType.PDF ? MAX_BYTES_PDF : MAX_BYTES);
+        return file.getSize() > MAX_BYTES;
     }
 
     //실패를 기록하다가 또 실패하면 원래 오류가 묻힌다. 여기서 끊는다.
