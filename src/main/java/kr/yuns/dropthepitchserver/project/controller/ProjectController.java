@@ -3,8 +3,10 @@ package kr.yuns.dropthepitchserver.project.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import kr.yuns.dropthepitchserver.common.response.GlobalResponse;
 import kr.yuns.dropthepitchserver.common.security.SecurityUtil;
+import kr.yuns.dropthepitchserver.project.data.dto.response.OpinionStatusResponseDto;
 import kr.yuns.dropthepitchserver.persona.data.dto.response.SelectedPersonaResponseDto;
 import kr.yuns.dropthepitchserver.persona.service.PersonaService;
+import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectStatusResponseDto;
 import kr.yuns.dropthepitchserver.project.data.dto.response.SidebarProjectResponseDto;
 import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectResponseDto;
 import kr.yuns.dropthepitchserver.project.service.ProjectService;
@@ -35,6 +37,18 @@ public class ProjectController {
     @Operation(summary = "프로젝트 조회")
     public GlobalResponse<ProjectResponseDto> getProject(@PathVariable Long projectId) {
         return GlobalResponse.ok(projectService.getProject(SecurityUtil.getUsername(), projectId));
+    }
+
+    @GetMapping("/{projectId}/status")
+    @Operation(summary = "프로젝트 상태 조회")
+    public GlobalResponse<ProjectStatusResponseDto> getProjectStatus(@PathVariable Long projectId) {
+        return GlobalResponse.ok(projectService.getProjectStatus(SecurityUtil.getUsername(), projectId));
+    }
+
+    @GetMapping("/{projectId}/opinions/status")
+    @Operation(summary = "프로젝트 의견 수집 상태 조회")
+    public GlobalResponse<OpinionStatusResponseDto> getOpinionStatus(@PathVariable Long projectId) {
+        return GlobalResponse.ok(projectService.getOpinionStatus(SecurityUtil.getUsername(), projectId));
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

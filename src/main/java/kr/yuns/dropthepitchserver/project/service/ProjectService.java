@@ -8,9 +8,12 @@ import kr.yuns.dropthepitchserver.analyze.data.repository.AnalysisRepository;
 import kr.yuns.dropthepitchserver.analyze.data.repository.FileRepository;
 import kr.yuns.dropthepitchserver.analyze.event.ProjectCreatedEvent;
 import kr.yuns.dropthepitchserver.common.s3.S3Service;
+import kr.yuns.dropthepitchserver.project.data.dto.response.OpinionStatusResponseDto;
 import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectResponseDto;
+import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectStatusResponseDto;
 import kr.yuns.dropthepitchserver.project.data.dto.response.SidebarProjectResponseDto;
 import kr.yuns.dropthepitchserver.project.data.entity.Project;
+import kr.yuns.dropthepitchserver.project.data.enums.OpinionCollectionStatus;
 import kr.yuns.dropthepitchserver.project.data.enums.ProjectStatus;
 import kr.yuns.dropthepitchserver.project.data.exception.ProjectNotFoundException;
 import kr.yuns.dropthepitchserver.project.data.repository.ProjectRepository;
@@ -109,6 +112,45 @@ public class ProjectService {
                 project.getCreatedAt(),
                 file,
                 reportId);
+    }
+
+    /**
+     * 프로젝트 상태를 조회합니다.
+     *
+     * @param email 사용자 이메일 주소
+     * @param projectId 프로젝트 고유 ID
+     * @return ProjectStatusResponseDto
+     */
+    public ProjectStatusResponseDto getProjectStatus(String email, Long projectId) {
+        Project project = getProjectEntity(email, projectId);
+
+        return ProjectStatusResponseDto.builder()
+                .status(project.getStatus())
+                .statusDisplay(project.getStatus().getDisplayName())
+                .build();
+    }
+
+    /**
+     * 프로젝트의 의견 수집 상태를 조회합니다.
+     *
+     * @param email 사용자 이메일 주소
+     * @param projectId 프로젝트 고유 ID
+     * @return OpinionStatusResponseDto
+     */
+    public OpinionStatusResponseDto getOpinionStatus(String email, Long projectId) {
+        Project project = getProjectEntity(email, projectId);
+        OpinionCollectionStatus status = project.getOpinionCollectionStatus();
+
+        if(status == null) {
+            status = OpinionCollectionStatus.NOT_STARTED;
+        }
+
+        String statusDisplay = status.getDisplayName();
+
+        return OpinionStatusResponseDto.builder()
+                .status(status)
+                .statusDisplay(statusDisplay)
+                .build();
     }
 
     /**
