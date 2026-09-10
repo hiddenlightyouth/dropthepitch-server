@@ -38,4 +38,8 @@ public class Project extends BaseEntity {
     public void changeTitle(String title) {
         this.title = title;
     }
+
+    public void complete() {
+        this.status = ProjectStatus.COMPLETED;
+    }
 }
