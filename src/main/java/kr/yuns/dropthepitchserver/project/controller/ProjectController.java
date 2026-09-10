@@ -1,8 +1,10 @@
 package kr.yuns.dropthepitchserver.project.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import kr.yuns.dropthepitchserver.common.response.GlobalResponse;
 import kr.yuns.dropthepitchserver.common.security.SecurityUtil;
+import kr.yuns.dropthepitchserver.project.data.dto.request.UpdateTitleRequestDto;
 import kr.yuns.dropthepitchserver.project.data.dto.response.OpinionStatusResponseDto;
 import kr.yuns.dropthepitchserver.persona.data.dto.response.SelectedPersonaResponseDto;
 import kr.yuns.dropthepitchserver.persona.service.PersonaService;
@@ -12,12 +14,7 @@ import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectResponseDto;
 import kr.yuns.dropthepitchserver.project.service.ProjectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
@@ -37,6 +34,13 @@ public class ProjectController {
     @Operation(summary = "프로젝트 조회")
     public GlobalResponse<ProjectResponseDto> getProject(@PathVariable Long projectId) {
         return GlobalResponse.ok(projectService.getProject(SecurityUtil.getUsername(), projectId));
+    }
+    @PatchMapping("/{projectId}")
+    @Operation(summary = "프로젝트 이름 변경")
+    public GlobalResponse<SidebarProjectResponseDto> editTitle(@PathVariable Long projectId,
+                                                               @Valid @RequestBody UpdateTitleRequestDto request) {
+        return GlobalResponse.ok(
+                projectService.changeTitle(SecurityUtil.getUsername(), projectId, request.getTitle()));
     }
 
     @GetMapping("/{projectId}/status")
@@ -69,4 +73,5 @@ public class ProjectController {
                                                                      @PathVariable Long personaId) {
         return GlobalResponse.ok(personaService.replacePersona(SecurityUtil.getUsername(), projectId, personaId));
     }
+
 }

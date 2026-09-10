@@ -86,6 +86,28 @@ public class ProjectService {
                     return new ProjectNotFoundException();
                 });
     }
+    /**
+     * 프로젝트 제목을 사용자가 정한 이름으로 바꿉니다.
+     *
+     * @param email 사용자 이메일 주소
+     * @param projectId 프로젝트 ID
+     * @param title 새 제목
+     * @return 사이드바 항목 형태의 프로젝트 정보
+     */
+    @Transactional
+    public SidebarProjectResponseDto changeTitle(String email, Long projectId, String title) {
+        Project project = getProjectEntity(email, projectId);
+        project.changeTitle(title);
+
+        log.info("[changeTitle] 프로젝트 제목 변경: projectId={}", projectId);
+
+        return SidebarProjectResponseDto.builder()
+                .projectId(project.getId())
+                .title(project.getTitle())
+                .status(project.getStatus())
+                .date(project.getUpdatedAt())
+                .build();
+    }
 
     @Transactional(readOnly = true)
     public ProjectResponseDto getProject(String email, Long projectId) {
@@ -219,4 +241,5 @@ public class ProjectService {
         String extension = originalFilename.substring(originalFilename.lastIndexOf('.') + 1);
         return InputType.valueOf(extension.toUpperCase());
     }
+
 }
