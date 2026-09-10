@@ -33,7 +33,7 @@ public class OpinionCollectionService {
      */
     public int collectAllOpinions(String email, Long projectId) {
         Project project = getProject(email, projectId);
-        String ideaDescription = analyzeService.getCompletedAnalysisContent(projectId);
+        String analysisBrief = analyzeService.getCompletedAnalysisContent(projectId);
 
         if (!projectRepository.startOpinionCollection(projectId)) {
             log.warn("[collectAllOpinions] 이미 수집을 요청한 프로젝트입니다: projectId={}, 상태={}",
@@ -49,7 +49,7 @@ public class OpinionCollectionService {
             return 0;
         }
 
-        opinionCollectionRunner.run(projectId, targets, ideaDescription);
+        opinionCollectionRunner.run(projectId, targets, analysisBrief);
 
         log.info("[collectAllOpinions] 의견 수집 요청 접수: projectId={}, 대상 {}건", projectId, targets.size());
 

@@ -39,6 +39,9 @@ public class Opinion extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private Sentiment sentiment;
 
+    @Column
+    private Double score;
+
 //    한 줄 코멘트, 의견 수집 전에는 비어 있음
     @Column
     private String summary;
@@ -59,9 +62,16 @@ public class Opinion extends BaseEntity {
         this.opinionDetails.add(opinionDetail);
     }
 
-    public void updateResult(Sentiment sentiment, String summary) {
-        this.sentiment = sentiment;
+    public void updateResult(Double score, String summary) {
+        this.score = normalizeScore(score);
+        this.sentiment = Sentiment.from(this.score);
         this.summary = summary;
+    }
+
+    private double normalizeScore(Double score) {
+        double value = score == null ? Sentiment.NEUTRAL.getScore() : score;
+        double clamped = Math.clamp(value, Sentiment.VERY_NEGATIVE.getScore(), Sentiment.VERY_POSITIVE.getScore());
+        return Math.round(clamped * 10) / 10.0;
     }
     //페르소나 변경
     public void replacePersona(Persona persona) {

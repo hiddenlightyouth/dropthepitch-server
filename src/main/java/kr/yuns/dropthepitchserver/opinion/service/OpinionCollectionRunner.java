@@ -7,7 +7,6 @@ import kr.yuns.dropthepitchserver.opinion.config.OpinionAsyncConfiguration;
 import kr.yuns.dropthepitchserver.opinion.data.dto.projection.OpinionCollectionTarget;
 import kr.yuns.dropthepitchserver.opinion.data.entity.Opinion;
 import kr.yuns.dropthepitchserver.opinion.data.entity.OpinionDetail;
-import kr.yuns.dropthepitchserver.opinion.data.enums.Sentiment;
 import kr.yuns.dropthepitchserver.opinion.data.exception.OpinionNotFoundException;
 import kr.yuns.dropthepitchserver.opinion.data.repository.OpinionRepository;
 import kr.yuns.dropthepitchserver.opinion.event.OpinionCollectionCompletedEvent;
@@ -50,14 +49,14 @@ public class OpinionCollectionRunner {
      *
      * @param projectId 프로젝트 ID
      * @param targets 수집 대상 의견/페르소나 목록
-     * @param ideaDescription 아이디어 설명
+     * @param analysisBrief 자료 분석 브리프
      */
-    public void run(Long projectId, List<OpinionCollectionTarget> targets, String ideaDescription) {
+    public void run(Long projectId, List<OpinionCollectionTarget> targets, String analysisBrief) {
         long startedAt = System.currentTimeMillis();
         log.info("[run] 의견 수집 시작: projectId={}, 대상 {}건", projectId, targets.size());
 
         List<CompletableFuture<Boolean>> futures = targets.stream()
-                .map(target -> collectOne(projectId, target, ideaDescription))
+                .map(target -> collectOne(projectId, target, analysisBrief))
                 .toList();
 
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
@@ -90,12 +89,12 @@ public class OpinionCollectionRunner {
      *
      * @param projectId 프로젝트 ID
      * @param target 수집 대상 의견/페르소나
-     * @param ideaDescription 아이디어 설명
+     * @param analysisBrief 자료 분석 브리프
      * @return 저장 성공 여부
      */
-    private CompletableFuture<Boolean> collectOne(Long projectId, OpinionCollectionTarget target, String ideaDescription) {
+    private CompletableFuture<Boolean> collectOne(Long projectId, OpinionCollectionTarget target, String analysisBrief) {
         return CompletableFuture
-                .supplyAsync(() -> opinionAiClient.collectOpinion(target.personaId(), ideaDescription),
+                .supplyAsync(() -> opinionAiClient.collectOpinion(target.personaId(), analysisBrief),
                         opinionCollectionExecutor)
                 .orTimeout(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .thenApply(callResult -> {
@@ -131,7 +130,7 @@ public class OpinionCollectionRunner {
         Opinion opinion = opinionRepository.findById(opinionId)
                 .orElseThrow(OpinionNotFoundException::new);
 
-        opinion.updateResult(toSentiment(result.score()), result.summary());
+        opinion.updateResult(result.score(), result.summary());
 
         if (result.details() == null) {
             return;
@@ -144,12 +143,5 @@ public class OpinionCollectionRunner {
                         .type(detail.type())
                         .content(detail.content())
                         .build()));
-    }
-
-    private Sentiment toSentiment(Double score) {
-        if (score == null) {
-            return Sentiment.NEUTRAL;
-        }
-        return Sentiment.from(score);
     }
 }

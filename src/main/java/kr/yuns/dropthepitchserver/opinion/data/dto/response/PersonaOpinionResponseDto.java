@@ -11,5 +11,6 @@ public record PersonaOpinionResponseDto(
     Integer personaAge,
     Sentiment sentimentEnum,
     String sentimentDisplay,
+    Double score,
     String summary
 ) {}

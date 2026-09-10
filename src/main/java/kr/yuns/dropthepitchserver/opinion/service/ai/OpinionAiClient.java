@@ -29,7 +29,7 @@ public class OpinionAiClient {
         this.personaProfileProvider = personaProfileProvider;
     }
 
-    public OpinionCallResult collectOpinion(Long personaId, String ideaDescription) {
+    public OpinionCallResult collectOpinion(Long personaId, String analysisBrief) {
         try {
             var options = GoogleGenAiChatOptions.builder()
                     .responseMimeType("application/json")
@@ -38,7 +38,7 @@ public class OpinionAiClient {
             ChatResponse chatResponse = chatClient.prompt()
                     .options(options)
                     .system(promptLoader.systemPrompt(personaProfileProvider.getProfile(personaId)))
-                    .user(ideaDescription)
+                    .user(analysisBrief)
                     .call()
                     .chatResponse();
 

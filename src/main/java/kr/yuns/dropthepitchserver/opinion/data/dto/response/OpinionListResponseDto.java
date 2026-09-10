@@ -19,7 +19,7 @@ public record OpinionListResponseDto(
         List<String> personaTags,
         Sentiment sentiment,
         String sentimentDisplay,
-        Integer score,
+        Double score,
         String summary,
         List<OpinionDetailResponseDto> details
 ) {

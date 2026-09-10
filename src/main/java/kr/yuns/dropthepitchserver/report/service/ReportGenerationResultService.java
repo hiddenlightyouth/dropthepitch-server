@@ -103,7 +103,7 @@ public class ReportGenerationResultService {
         opinionRepository.findAllByProjectIdWithDetails(projectId);
 
         List<Opinion> collected = opinions.stream()
-                .filter(opinion -> opinion.getSentiment() != null)
+                .filter(opinion -> opinion.getScore() != null)
                 .toList();
 
         String brief = StringUtils.hasText(analysis.getDetail())
@@ -130,7 +130,8 @@ public class ReportGenerationResultService {
         block.append("[")
                 .append(AgeGroup.from(persona.getAge()).getDisplayName()).append(" · ")
                 .append(persona.getGender()).append(" · ")
-                .append(opinion.getSentiment().getDisplayName())
+                .append(opinion.getSentiment().getDisplayName()).append(" ")
+                .append(opinion.getScore()).append("점")
                 .append("]");
 
         if (StringUtils.hasText(opinion.getSummary())) {
