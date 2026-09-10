@@ -8,6 +8,7 @@ public enum ErrorCode {
     INVALID_PARAMETER("C002", "유효하지 않은 파라미터입니다.", 400),
     INVALID_FILE_TYPE("C4002", "지원하지 않는 파일 형식입니다.", 400),
     ANALYZE_NOT_COMPLETED("C4003", "파일 분석이 아직 완료되지 않았습니다.", 400),
+    INVALID_PROJECT_TITLE("C4004", "제목은 6자 이상 255자 이하여야 합니다.", 400),
     VERIFICATION_INVALID("C4011", "인증 정보가 유효하지 않습니다.", 401),
     PASSWORD_INVALID("C4012", "비밀번호가 일치하지 않습니다.", 401),
     TOKEN_INVALID("C4013", "유효하지 않은 토큰입니다.", 401),
