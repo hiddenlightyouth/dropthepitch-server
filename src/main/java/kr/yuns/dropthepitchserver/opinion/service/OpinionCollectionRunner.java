@@ -50,14 +50,14 @@ public class OpinionCollectionRunner {
      *
      * @param projectId 프로젝트 ID
      * @param targets 수집 대상 의견/페르소나 목록
-     * @param ideaDescription 아이디어 설명
+     * @param analysisBrief 자료 분석 브리프
      */
-    public void run(Long projectId, List<OpinionCollectionTarget> targets, String ideaDescription) {
+    public void run(Long projectId, List<OpinionCollectionTarget> targets, String analysisBrief) {
         long startedAt = System.currentTimeMillis();
         log.info("[run] 의견 수집 시작: projectId={}, 대상 {}건", projectId, targets.size());
 
         List<CompletableFuture<Boolean>> futures = targets.stream()
-                .map(target -> collectOne(projectId, target, ideaDescription))
+                .map(target -> collectOne(projectId, target, analysisBrief))
                 .toList();
 
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
@@ -90,12 +90,12 @@ public class OpinionCollectionRunner {
      *
      * @param projectId 프로젝트 ID
      * @param target 수집 대상 의견/페르소나
-     * @param ideaDescription 아이디어 설명
+     * @param analysisBrief 자료 분석 브리프
      * @return 저장 성공 여부
      */
-    private CompletableFuture<Boolean> collectOne(Long projectId, OpinionCollectionTarget target, String ideaDescription) {
+    private CompletableFuture<Boolean> collectOne(Long projectId, OpinionCollectionTarget target, String analysisBrief) {
         return CompletableFuture
-                .supplyAsync(() -> opinionAiClient.collectOpinion(target.personaId(), ideaDescription),
+                .supplyAsync(() -> opinionAiClient.collectOpinion(target.personaId(), analysisBrief),
                         opinionCollectionExecutor)
                 .orTimeout(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .thenApply(callResult -> {
