@@ -72,6 +72,7 @@ public class ProjectService {
                         .projectId(project.getId())
                         .title(project.getTitle())
                         .status(project.getStatus())
+                        .date(project.getUpdatedAt())
                         .build())
                 .toList();
     }
