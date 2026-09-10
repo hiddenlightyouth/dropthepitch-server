@@ -55,18 +55,18 @@ public class ReportService {
     //아직 채우지 않은 의견은 점수 계산에서 제외.
     private ReportMetrics calculateMetrics(List<Opinion> opinions) {
         List<Opinion> scored = opinions.stream()
-                .filter(opinion -> opinion.getSentiment() != null)
+                .filter(opinion -> opinion.getScore() != null)
                 .toList();
 
         Map<AgeGroup, Double> ageScores = scored.stream()
                 .collect(Collectors.groupingBy(
                         opinion -> AgeGroup.from(opinion.getPersona().getAge()),
                         Collectors.collectingAndThen(
-                                Collectors.averagingInt(opinion -> opinion.getSentiment().getScore()),
+                                Collectors.averagingDouble(Opinion::getScore),
                                 this::roundScore)));
 
         OptionalDouble average = scored.stream()
-                .mapToInt(opinion -> opinion.getSentiment().getScore())
+                .mapToDouble(Opinion::getScore)
                 .average();
 
         return new ReportMetrics(ageScores, opinions.size(),
