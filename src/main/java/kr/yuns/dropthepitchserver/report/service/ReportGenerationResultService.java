@@ -66,6 +66,8 @@ public class ReportGenerationResultService {
             addItem(report, ReportItemType.AGE_IMPROVEMENT, insight.ageGroup(), insight.improvement());
         });
 
+        report.getProject().complete();
+
         log.info("[saveReport] 리포트 저장: projectId={}, 항목={}건", projectId, report.getReportItems().size());
     }
 
