@@ -14,10 +14,9 @@ public record FileAnalysisResult(
         AnalysisDetail detail,
         PolicyViolation policyViolation
 ) {
-    //영상 구간. analysis_timeline 테이블에 그대로 저장된다.
     public record TimelineSegment(
-            Integer startTime,
-            Integer endTime,
+            String startTime,
+            String endTime,
             String content
     ) { }
 
