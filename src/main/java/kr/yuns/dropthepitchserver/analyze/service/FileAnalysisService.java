@@ -50,7 +50,7 @@ public class FileAnalysisService {
 
             AnalysisCallResult callResult = geminiAnalysisClient.analyze(
                     promptLoader.systemPrompt(),
-                    promptLoader.userPrompt(type, videoSeconds),
+                    promptLoader.userPrompt(type),
                     promptLoader.schema(),
                     List.of(media));
 

@@ -12,7 +12,6 @@ public class VideoDurationReader {
 
     /**
      * 영상 길이를 초 단위로 읽습니다.
-     * 읽지 못하면 null을 돌려주고, 분석은 길이 안내 없이 진행됩니다.
      *
      * @param bytes 영상 내용
      * @return 영상 길이(초). 읽지 못하면 null

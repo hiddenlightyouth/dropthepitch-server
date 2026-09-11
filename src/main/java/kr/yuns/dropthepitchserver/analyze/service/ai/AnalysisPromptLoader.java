@@ -9,7 +9,6 @@ import org.springframework.util.MimeTypeUtils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.stream.Collectors;
 
 //프롬프트와 JSON 스키마를 resources에서 읽어 보관한다.
 //파일로 두는 이유: 프롬프트를 고칠 때 자바 코드를 건드리지 않아도 되고,
@@ -17,8 +16,6 @@ import java.util.stream.Collectors;
 @Component
 @Slf4j
 public class AnalysisPromptLoader {
-
-    private static final String DURATION = "{{DURATION}}";
 
     private final String systemPrompt;
     private final String documentPrompt;
@@ -49,27 +46,16 @@ public class AnalysisPromptLoader {
     /**
      * 파일 형식에 맞는 사용자 프롬프트를 돌려줍니다.
      * 문서, 이미지, 영상은 읽는 방법이 달라 프롬프트가 나뉩니다.
-     * 영상은 실제 길이를 넣어 모델이 없는 시각을 쓰지 않게 합니다.
      *
      * @param type 업로드된 파일 형식
-     * @param videoSeconds 영상 길이(초). 영상이 아니거나 읽지 못했으면 null
      * @return 사용자 프롬프트
      */
-    public String userPrompt(InputType type, Integer videoSeconds) {
+    public String userPrompt(InputType type) {
         return switch (type) {
             case PDF, MD -> documentPrompt;
             case JPG, PNG, WEBP -> imagePrompt;
-            case MP4 -> videoPromptWithLength(videoSeconds);
+            case MP4 -> videoPrompt;
         };
-    }
-
-    private String videoPromptWithLength(Integer videoSeconds) {
-        if (videoSeconds == null) {
-            return videoPrompt.lines()
-                    .filter(line -> !line.contains(DURATION))
-                    .collect(Collectors.joining("\n"));
-        }
-        return videoPrompt.replace(DURATION, String.valueOf(videoSeconds));
     }
 
     /**

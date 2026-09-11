@@ -34,7 +34,7 @@
     },
     "timeline": {
       "type": "array",
-      "description": "영상일 때만 시간순 구간. 영상이 아니면 빈 배열. 장면이 바뀌거나 말하는 주제가 바뀔 때마다 한 항목. 첫 구간은 0초에서 시작하고 마지막 구간은 영상이 끝나는 시각에서 끝나며, 영상 끝까지 빠짐없이 나눈다.",
+      "description": "영상일 때만 시간순 구간. 영상이 아니면 빈 배열. 장면이 바뀌거나 말하는 주제가 바뀔 때마다 한 항목. 첫 구간은 '0:00'에서 시작하고, 영상 끝까지 빠짐없이 나눈다.",
       "items": {
         "type": "object",
         "propertyOrdering": [
@@ -49,12 +49,12 @@
         ],
         "properties": {
           "startTime": {
-            "type": "integer",
-            "description": "구간 시작 시각. 초 단위 정수"
+            "type": "string",
+            "description": "구간 시작 시각. 영상 속 시각을 '분:초'로 쓴다(예: '0:00', '1:05', '12:30'). 1시간이 넘으면 '시:분:초'."
           },
           "endTime": {
-            "type": "integer",
-            "description": "구간 끝 시각. 초 단위 정수이며 시작보다 커야 한다. 영상 길이를 넘지 않는다."
+            "type": "string",
+            "description": "구간 끝 시각. startTime과 같은 형식이며 시작보다 늦다."
           },
           "content": {
             "type": "string",

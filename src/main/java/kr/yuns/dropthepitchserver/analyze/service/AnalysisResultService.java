@@ -20,6 +20,7 @@ import org.springframework.util.StringUtils;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 //DB 작업만 담당한다. AI 호출처럼 오래 걸리는 일은 여기에 두지 않는다.
@@ -31,6 +32,7 @@ public class AnalysisResultService {
 
     private static final int TIMELINE_CONTENT_MAX_LENGTH = 500;
     private static final int TITLE_MAX_LENGTH = 100;
+    private static final Pattern CLOCK = Pattern.compile("(?:(\\d+):)?(\\d{1,2}):([0-5]\\d)");
     private static final Pattern REPEATED_TEXT = Pattern.compile("(자막|화면 글자): ([^/]+?) / 음성: \\2\\.?(?= /|$)");
 
     private final AnalysisRepository analysisRepository;
@@ -78,15 +80,7 @@ public class AnalysisResultService {
         analysis.complete(result.summary(), withoutPolicyViolation(callResult.rawJson()));
 
         if (result.timeline() != null) {
-            result.timeline().stream()
-                    .filter(this::isValidSegment)
-                    .filter(segment -> isWithinVideo(projectId, segment, videoSeconds))
-                    .forEach(segment -> analysis.addAnalysisTimeline(AnalysisTimeline.builder()
-                            .analysis(analysis)
-                            .startTime(segment.startTime())
-                            .endTime(videoSeconds == null ? segment.endTime() : Math.min(segment.endTime(), videoSeconds))
-                            .content(truncate(tidy(segment.content())))
-                            .build()));
+            result.timeline().forEach(segment -> addTimeline(projectId, analysis, segment, videoSeconds));
         }
 
         applyAiTitle(analysis.getProject(), result.title());
@@ -133,27 +127,32 @@ public class AnalysisResultService {
                 : title.substring(0, TITLE_MAX_LENGTH));
     }
 
-    //세 컬럼 모두 not null이고 endTime이 startTime보다 커야 한다. 어긋난 구간은 저장하지 않는다.
-    private boolean isValidSegment(FileAnalysisResult.TimelineSegment segment) {
-        boolean valid = segment.startTime() != null
-                && segment.endTime() != null
-                && segment.content() != null
-                && segment.endTime() > segment.startTime();
+    private void addTimeline(Long projectId, Analysis analysis, FileAnalysisResult.TimelineSegment segment, Integer videoSeconds) {
+        Integer start = toSeconds(segment.startTime());
+        Integer end = toSeconds(segment.endTime());
 
-        if (!valid) {
-            log.warn("[saveSuccess] 잘못된 타임라인 구간을 건너뜁니다: {}", segment);
+        if (start == null || end == null || segment.content() == null || end <= start
+                || (videoSeconds != null && start >= videoSeconds)) {
+            log.warn("[saveSuccess] 잘못된 타임라인 구간을 건너뜁니다: projectId={}, 영상={}초, 구간={}",
+                    projectId, videoSeconds, segment);
+            return;
         }
-        return valid;
+
+        analysis.addAnalysisTimeline(AnalysisTimeline.builder()
+                .analysis(analysis)
+                .startTime(start)
+                .endTime(videoSeconds == null ? end : Math.min(end, videoSeconds))
+                .content(truncate(tidy(segment.content())))
+                .build());
     }
 
-    //영상 길이보다 뒤에서 시작하는 구간은 버린다.
-    private boolean isWithinVideo(Long projectId, FileAnalysisResult.TimelineSegment segment, Integer videoSeconds) {
-        if (videoSeconds == null || segment.startTime() < videoSeconds) {
-            return true;
+    private static Integer toSeconds(String clock) {
+        Matcher matcher = clock == null ? null : CLOCK.matcher(clock.trim());
+        if (matcher == null || !matcher.matches()) {
+            return null;
         }
-        log.warn("[saveSuccess] 영상 길이를 넘는 구간을 건너뜁니다: projectId={}, 영상={}초, 구간={}~{}초",
-                projectId, videoSeconds, segment.startTime(), segment.endTime());
-        return false;
+        int hours = matcher.group(1) == null ? 0 : Integer.parseInt(matcher.group(1));
+        return hours * 3600 + Integer.parseInt(matcher.group(2)) * 60 + Integer.parseInt(matcher.group(3));
     }
 
     //모델이 같은 문장을 '화면 글자: A / 음성: A'처럼 두 번 쓰거나 '음성: 없음'을 붙이는 경우가 있어 저장 전에 정리한다.
