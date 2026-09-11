@@ -8,6 +8,7 @@ import kr.yuns.dropthepitchserver.analyze.data.repository.AnalysisRepository;
 import kr.yuns.dropthepitchserver.analyze.data.repository.FileRepository;
 import kr.yuns.dropthepitchserver.analyze.event.ProjectCreatedEvent;
 import kr.yuns.dropthepitchserver.common.s3.S3Service;
+import kr.yuns.dropthepitchserver.opinion.data.repository.OpinionRepository;
 import kr.yuns.dropthepitchserver.project.data.dto.response.OpinionStatusResponseDto;
 import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectResponseDto;
 import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectStatusResponseDto;
@@ -18,6 +19,7 @@ import kr.yuns.dropthepitchserver.project.data.enums.ProjectStatus;
 import kr.yuns.dropthepitchserver.project.data.exception.InvalidProjectTitleException;
 import kr.yuns.dropthepitchserver.project.data.exception.ProjectNotFoundException;
 import kr.yuns.dropthepitchserver.project.data.repository.ProjectRepository;
+import kr.yuns.dropthepitchserver.project.event.ProjectDeletedEvent;
 import kr.yuns.dropthepitchserver.report.data.entity.Report;
 import kr.yuns.dropthepitchserver.report.data.repository.ReportRepository;
 import kr.yuns.dropthepitchserver.user.data.entity.User;
@@ -32,6 +34,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -45,6 +48,7 @@ public class ProjectService {
     private final FileRepository fileRepository;
     private final ReportRepository reportRepository;
     private final AnalysisRepository analysisRepository;
+    private final OpinionRepository opinionRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final S3Service s3Service;
 
@@ -232,6 +236,40 @@ public class ProjectService {
         log.info("[createProject] 새 작업 생성: projectId={}, email={}", project.getId(), email);
 
         return getProject(email, project.getId());
+    }
+
+    /**
+     * 프로젝트와 딸린 파일, 분석, 의견, 리포트를 삭제합니다.
+     * AI 사용량 기록은 남기고, S3 파일은 DB 삭제가 커밋된 뒤에 지웁니다.
+     *
+     * @param email 사용자 이메일 주소
+     * @param projectId 프로젝트 ID
+     */
+    @Transactional
+    public void deleteProject(String email, Long projectId) {
+        Project project = projectRepository.findWithLockByIdAndUserEmail(projectId, email)
+                .orElseThrow(() -> {
+                    log.warn("[deleteProject] 프로젝트 조회 실패: projectId={}, email={}", projectId, email);
+                    return new ProjectNotFoundException();
+                });
+        Optional<File> file = fileRepository.findByProjectId(projectId);
+
+        List<String> fileKeys = file
+                .map(f -> Stream.of(f.getUrl(), f.getThumbnailUrl())
+                        .filter(StringUtils::hasText)
+                        .distinct()
+                        .toList())
+                .orElse(List.of());
+
+        opinionRepository.deleteAll(opinionRepository.findAllByProjectIdWithDetails(projectId));
+        reportRepository.findByProjectId(projectId).ifPresent(reportRepository::delete);
+        analysisRepository.findByProjectId(projectId).ifPresent(analysisRepository::delete);
+        file.ifPresent(fileRepository::delete);
+        project.delete();
+
+        eventPublisher.publishEvent(new ProjectDeletedEvent(projectId, fileKeys));
+
+        log.info("[deleteProject] 프로젝트 삭제: projectId={}, email={}", projectId, email);
     }
 
     /**

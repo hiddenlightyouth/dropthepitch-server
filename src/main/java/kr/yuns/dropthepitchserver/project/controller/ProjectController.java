@@ -60,6 +60,13 @@ public class ProjectController {
         return GlobalResponse.ok(projectService.createProject(SecurityUtil.getUsername(), file));
     }
 
+    @DeleteMapping("/{projectId}")
+    @Operation(summary = "프로젝트 삭제", description = "파일, 분석, 의견, 리포트를 함께 삭제합니다. 되돌릴 수 없습니다.")
+    public GlobalResponse<Void> deleteProject(@PathVariable Long projectId) {
+        projectService.deleteProject(SecurityUtil.getUsername(), projectId);
+        return GlobalResponse.ok();
+    }
+
     @GetMapping("/{projectId}/personas")
     @Operation(summary = "선정된 페르소나 목록 조회", description = "선별이 끝나기 전에는 빈 목록이 나갑니다.")
     public GlobalResponse<List<SelectedPersonaResponseDto>> getSelectedPersonas(@PathVariable Long projectId) {

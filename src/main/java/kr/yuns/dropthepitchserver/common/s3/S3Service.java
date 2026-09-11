@@ -13,6 +13,7 @@ import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -112,6 +113,24 @@ public class S3Service {
         } catch (SdkException e) {
             log.error("[S3Service] S3 다운로드 실패: key={}, message={}", key, e.getMessage());
             throw new FileDownloadFailedException();
+        }
+    }
+
+    /**
+     * S3에 저장된 파일을 지웁니다.
+     * 실패해도 예외를 던지지 않습니다. DB에서 이미 지운 뒤라 되돌릴 수 없고, 남은 파일은 저장 공간만 차지합니다.
+     *
+     * @param key S3에 저장된 파일의 key
+     */
+    public void delete(String key) {
+        try {
+            s3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .build());
+            log.info("[S3Service] S3 삭제 완료: key={}", key);
+        } catch (SdkException e) {
+            log.warn("[S3Service] S3 삭제 실패: key={}, message={}", key, e.getMessage());
         }
     }
 
