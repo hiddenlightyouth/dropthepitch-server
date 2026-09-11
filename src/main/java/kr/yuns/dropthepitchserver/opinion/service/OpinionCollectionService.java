@@ -4,6 +4,7 @@ import kr.yuns.dropthepitchserver.analyze.service.AnalyzeService;
 import kr.yuns.dropthepitchserver.opinion.data.dto.projection.OpinionCollectionTarget;
 import kr.yuns.dropthepitchserver.opinion.data.exception.OpinionAlreadyCollectedException;
 import kr.yuns.dropthepitchserver.opinion.data.repository.OpinionRepository;
+import kr.yuns.dropthepitchserver.opinion.service.ai.OpinionBriefFilter;
 import kr.yuns.dropthepitchserver.project.data.entity.Project;
 import kr.yuns.dropthepitchserver.project.data.enums.OpinionCollectionStatus;
 import kr.yuns.dropthepitchserver.project.data.exception.ProjectNotFoundException;
@@ -22,6 +23,7 @@ public class OpinionCollectionService {
     private final ProjectRepository projectRepository;
     private final OpinionRepository opinionRepository;
     private final AnalyzeService analyzeService;
+    private final OpinionBriefFilter opinionBriefFilter;
 
     /**
      * 프로젝트에 속한 모든 페르소나의 의견 수집을 시작합니다.
@@ -33,7 +35,7 @@ public class OpinionCollectionService {
      */
     public int collectAllOpinions(String email, Long projectId) {
         Project project = getProject(email, projectId);
-        String analysisBrief = analyzeService.getCompletedAnalysisContent(projectId);
+        String analysisBrief = opinionBriefFilter.filter(analyzeService.getCompletedAnalysisBrief(projectId));
 
         if (!projectRepository.startOpinionCollection(projectId)) {
             log.warn("[collectAllOpinions] 이미 수집을 요청한 프로젝트입니다: projectId={}, 상태={}",

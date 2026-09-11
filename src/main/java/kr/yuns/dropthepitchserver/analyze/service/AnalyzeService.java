@@ -105,25 +105,27 @@ public class AnalyzeService {
     }
 
     /**
-     * 완료된 파일 분석 결과 본문을 조회합니다.
+     * 완료된 파일 분석 브리프를 조회합니다.
+     * 상세 JSON이 비어 있으면 한 줄 요약으로 대체합니다.
      *
      * @param projectId 프로젝트 ID
-     * @return 분석 결과 본문
+     * @return 분석 브리프
      */
     @Transactional(readOnly = true)
-    public String getCompletedAnalysisContent(Long projectId) {
+    public String getCompletedAnalysisBrief(Long projectId) {
         Analysis analysis = analysisRepository.findByProjectId(projectId)
                 .orElseThrow(() -> {
-                    log.warn("[getCompletedAnalysisContent] 분석 결과 조회 실패: projectId={}", projectId);
+                    log.warn("[getCompletedAnalysisBrief] 분석 결과 조회 실패: projectId={}", projectId);
                     return new AnalysisNotFoundException();
                 });
 
-        if (analysis.getStatus() != AnalysisStatus.COMPLETED || !StringUtils.hasText(analysis.getContent())) {
-            log.warn("[getCompletedAnalysisContent] 분석이 완료되지 않았습니다: projectId={}, status={}",
+        if (analysis.getStatus() != AnalysisStatus.COMPLETED
+                || (!StringUtils.hasText(analysis.getDetail()) && !StringUtils.hasText(analysis.getContent()))) {
+            log.warn("[getCompletedAnalysisBrief] 분석이 완료되지 않았습니다: projectId={}, status={}",
                     projectId, analysis.getStatus());
             throw new AnalysisNotCompletedException();
         }
 
-        return analysis.getContent();
+        return StringUtils.hasText(analysis.getDetail()) ? analysis.getDetail() : analysis.getContent();
     }
 }
