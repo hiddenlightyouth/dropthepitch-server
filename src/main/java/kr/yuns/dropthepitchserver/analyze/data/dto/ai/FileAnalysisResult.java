@@ -11,7 +11,8 @@ public record FileAnalysisResult(
         String summary,
         List<String> keywords,
         List<TimelineSegment> timeline,
-        AnalysisDetail detail
+        AnalysisDetail detail,
+        PolicyViolation policyViolation
 ) {
     //영상 구간. analysis_timeline 테이블에 그대로 저장된다.
     public record TimelineSegment(
@@ -64,6 +65,17 @@ public record FileAnalysisResult(
             List<Assumption> eligibility,
             List<Assumption> knowledge
     ) { }
+
+    public record PolicyViolation(
+            String category,
+            String evidence
+    ) {
+        private static final String NONE = "없음";
+
+        public boolean violated() {
+            return category != null && !NONE.equals(category);
+        }
+    }
 
     public record Assumption(
             String assumption,

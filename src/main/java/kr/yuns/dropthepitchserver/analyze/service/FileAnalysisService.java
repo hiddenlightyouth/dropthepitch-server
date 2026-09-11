@@ -1,5 +1,8 @@
 package kr.yuns.dropthepitchserver.analyze.service;
 
+import kr.yuns.dropthepitchserver.ai.data.enums.AiPurpose;
+import kr.yuns.dropthepitchserver.ai.service.AiService;
+import kr.yuns.dropthepitchserver.ai.service.dto.SaveAiUsageCommand;
 import kr.yuns.dropthepitchserver.analyze.data.dto.ai.AnalysisCallResult;
 import kr.yuns.dropthepitchserver.analyze.data.entity.File;
 import kr.yuns.dropthepitchserver.analyze.data.enums.InputType;
@@ -25,6 +28,8 @@ public class FileAnalysisService {
     private final AnalysisPromptLoader promptLoader;
     private final GeminiAnalysisClient geminiAnalysisClient;
     private final AnalysisResultService analysisResultService;
+    private final VideoDurationReader videoDurationReader;
+    private final AiService aiService;
 
     /**
      * 파일 내용을 분석해 결과를 저장합니다.
@@ -37,18 +42,26 @@ public class FileAnalysisService {
     public void analyze(Long projectId, File file, byte[] bytes) {
         long start = System.currentTimeMillis();
         InputType type = file.getType();
-        log.info("[analyze] 분석 시작: projectId={}, thread={}", projectId, Thread.currentThread());
+        Integer videoSeconds = type == InputType.MP4 ? videoDurationReader.readSeconds(bytes) : null;
+        log.info("[analyze] 분석 시작: projectId={}, videoSeconds={}, thread={}", projectId, videoSeconds, Thread.currentThread());
 
         try {
             Media media = new Media(promptLoader.mimeType(type), new ByteArrayResource(bytes));
 
             AnalysisCallResult callResult = geminiAnalysisClient.analyze(
                     promptLoader.systemPrompt(),
-                    promptLoader.userPrompt(type),
+                    promptLoader.userPrompt(type, videoSeconds),
                     promptLoader.schema(),
                     List.of(media));
 
-            analysisResultService.saveSuccess(projectId, callResult);
+            //결과 저장이 실패해도 토큰을 쓴 기록은 남도록 먼저 따로 남긴다.
+            aiService.saveAiUsage(new SaveAiUsageCommand(
+                    projectId,
+                    callResult.model(),
+                    AiPurpose.ANALYSIS,
+                    callResult.inputTokens(),
+                    callResult.outputTokens()));
+            analysisResultService.saveSuccess(projectId, callResult, videoSeconds);
 
             log.info("[analyze] 분석 완료: projectId={}, {}ms, model={}, inputTokens={}, outputTokens={}",
                     projectId, System.currentTimeMillis() - start,

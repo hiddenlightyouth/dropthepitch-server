@@ -50,6 +50,10 @@ public class Project extends BaseEntity {
         this.status = ProjectStatus.COMPLETED;
     }
 
+    public void fail() {
+        this.status = ProjectStatus.FAILED;
+    }
+
     public void delete() {
         this.deletedAt = LocalDateTime.now();
     }
