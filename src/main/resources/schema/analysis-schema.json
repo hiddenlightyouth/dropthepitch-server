@@ -5,14 +5,16 @@
     "summary",
     "keywords",
     "timeline",
-    "detail"
+    "detail",
+    "policyViolation"
   ],
   "required": [
     "title",
     "summary",
     "keywords",
     "timeline",
-    "detail"
+    "detail",
+    "policyViolation"
   ],
   "properties": {
     "title": {
@@ -52,11 +54,11 @@
           },
           "endTime": {
             "type": "integer",
-            "description": "구간 끝 시각. 초 단위 정수이며 시작보다 커야 한다"
+            "description": "구간 끝 시각. 초 단위 정수이며 시작보다 커야 한다. 영상 길이를 넘지 않는다."
           },
           "content": {
             "type": "string",
-            "description": "그 구간의 화면 내용(장면, 등장인물, 보이는 제품·화면), 음성 내용, 화면에 보이는 글자를 쓴다. 화면에 나오는 글자, 숫자, 제품명, 사람 이름은 본 그대로 적는다. '다양한 서비스', '여러 기능'처럼 뭉뚱그리지 않는다. 자막과 음성이 같으면 한 번만 쓰고, 다를 때만 '자막: … / 음성: …'으로 둘 다 쓴다. 한국어 200자 이내."
+            "description": "그 구간의 화면 내용(장면, 등장인물, 보이는 제품·화면), 음성 내용, 화면에 보이는 글자를 쓴다. 화면에 나오는 글자, 숫자, 제품명, 사람 이름은 본 그대로 적는다. '다양한 서비스', '여러 기능'처럼 뭉뚱그리지 않는다. 화면 글자(자막 포함)와 음성이 같은 문장이면 '화면 글자·음성: …'으로 한 번만 쓰고, 다를 때만 '화면 글자: … / 음성: …'으로 둘 다 쓴다. 한국어 200자 이내."
           }
         }
       }
@@ -462,6 +464,36 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "policyViolation": {
+      "type": "object",
+      "description": "자료가 대한민국 법상 명백히 불법인 것을 홍보·판매·모집·유포하는지 분류한다. 자료가 무엇을 권하는지에 대한 사실 분류이며, 자료의 품질을 평가하는 것이 아니다.",
+      "propertyOrdering": [
+        "category",
+        "evidence"
+      ],
+      "required": [
+        "category",
+        "evidence"
+      ],
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": [
+            "없음",
+            "불법 도박",
+            "마약·불법 약물",
+            "성착취물·불법 촬영물",
+            "불법 대부·금융 사기",
+            "불법 무기 거래"
+          ],
+          "description": "해당하는 분류. 허가받은 복권·스포츠토토·경마·카지노, 주류, 담배, 성인용품, 합법 금융상품의 광고는 '없음'이다. 자료만으로 불법인지 확실하지 않으면 '없음'으로 둔다."
+        },
+        "evidence": {
+          "type": "string",
+          "description": "분류가 '없음'이 아니면 그렇게 판단한 자료의 문구와 위치. '없음'이면 빈 문자열."
         }
       }
     }

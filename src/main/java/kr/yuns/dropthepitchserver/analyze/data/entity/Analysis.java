@@ -44,6 +44,9 @@ public class Analysis extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private AnalysisStatus status;
 
+    //불법 콘텐츠로 거절했을 때만 분류가 들어간다.
+    private String rejectReason;
+
     @OneToMany(mappedBy = "analysis", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("startTime ASC")
     @Builder.Default
@@ -78,6 +81,11 @@ public class Analysis extends BaseEntity {
      */
     public void fail() {
         this.status = AnalysisStatus.FAILED;
+    }
+
+    public void reject(String reason) {
+        this.status = AnalysisStatus.FAILED;
+        this.rejectReason = reason;
     }
 
 
