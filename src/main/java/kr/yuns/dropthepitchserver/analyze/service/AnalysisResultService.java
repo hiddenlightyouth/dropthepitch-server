@@ -5,6 +5,7 @@ import kr.yuns.dropthepitchserver.analyze.data.dto.ai.FileAnalysisResult;
 import kr.yuns.dropthepitchserver.analyze.data.entity.Analysis;
 import kr.yuns.dropthepitchserver.analyze.data.entity.AnalysisTimeline;
 import kr.yuns.dropthepitchserver.analyze.data.entity.File;
+import kr.yuns.dropthepitchserver.analyze.data.enums.AnalysisVerdict;
 import kr.yuns.dropthepitchserver.analyze.data.exception.AnalysisNotFoundException;
 import kr.yuns.dropthepitchserver.analyze.data.exception.FileNotFoundException;
 import kr.yuns.dropthepitchserver.analyze.data.repository.AnalysisRepository;
@@ -65,19 +66,24 @@ public class AnalysisResultService {
         FileAnalysisResult result = callResult.result();
         Analysis analysis = getAnalysis(projectId);
 
-        //불법 콘텐츠면 페르소나 선별 이벤트 없이 끝낸다.
-        FileAnalysisResult.PolicyViolation violation = result.policyViolation();
-        if (violation != null && violation.violated()) {
-            analysis.reject(violation.category());
+        AnalysisVerdict verdict = result.review() == null ? null : AnalysisVerdict.from(result.review().verdict());
+
+        if (verdict == null) {
+            analysis.fail();
             analysis.getProject().fail();
-            log.warn("[saveSuccess] 불법 콘텐츠로 분석을 거절합니다: projectId={}, 분류={}, 근거={}",
-                    projectId, violation.category(), violation.evidence());
+            log.error("[saveSuccess] 판정을 읽을 수 없어 실패로 남깁니다: projectId={}, review={}", projectId, result.review());
+            return;
+        }
+
+        //거절이면 페르소나 선별 이벤트 없이 끝낸다.
+        if (verdict != AnalysisVerdict.ANALYZABLE) {
+            reject(analysis, verdict, result.review().reason());
             return;
         }
 
         //detail에는 모델이 돌려준 원본 JSON을 넣는다.
         //객체로 다시 만들면 record에 없는 필드가 사라져, 스키마를 고칠 때마다 자바도 고쳐야 한다.
-        analysis.complete(result.summary(), withoutPolicyViolation(callResult.rawJson()));
+        analysis.complete(result.summary(), withoutInternalFields(callResult.rawJson()));
 
         if (result.timeline() != null) {
             result.timeline().forEach(segment -> addTimeline(projectId, analysis, segment, videoSeconds));
@@ -93,6 +99,24 @@ public class AnalysisResultService {
                 projectId,
                 callResult.rawJson() == null ? 0 : callResult.rawJson().length(),
                 result.timeline() == null ? 0 : result.timeline().size());
+    }
+
+    /**
+     * AI를 부르기 전에 서버가 판단한 거절을 기록합니다.
+     *
+     * @param projectId 프로젝트 ID
+     * @param verdict 거절 판정
+     */
+    @Transactional
+    public void saveRejected(Long projectId, AnalysisVerdict verdict) {
+        reject(getAnalysis(projectId), verdict, "서버 확인");
+    }
+
+    private void reject(Analysis analysis, AnalysisVerdict verdict, String reason) {
+        analysis.reject(verdict);
+        analysis.getProject().fail();
+        log.warn("[reject] 분석을 거절합니다: projectId={}, 판정={}, 근거={}",
+                analysis.getProject().getId(), verdict.getLabel(), reason);
     }
 
     /**
@@ -160,10 +184,10 @@ public class AnalysisResultService {
         return REPEATED_TEXT.matcher(content.replace(" / 음성: 없음", "")).replaceAll("$1·음성: $2");
     }
 
-    //detail은 페르소나 브리프로 그대로 넘어가므로 거절 판정 필드는 남기지 않는다.
-    private String withoutPolicyViolation(String rawJson) {
+    //detail은 페르소나 브리프로 그대로 넘어가므로 내부 판정 필드는 남기지 않는다.
+    private String withoutInternalFields(String rawJson) {
         ObjectNode root = (ObjectNode) objectMapper.readTree(rawJson);
-        root.remove("policyViolation");
+        root.remove("review");
         return objectMapper.writeValueAsString(root);
     }
 

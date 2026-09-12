@@ -18,6 +18,13 @@ public class GlobalErrorResponse {
                 .build();
     }
 
+    public static GlobalErrorResponse from(ErrorCode errorCode, String message) {
+        return GlobalErrorResponse.builder()
+                .code(errorCode.getCode())
+                .message(message == null ? errorCode.getMessage() : message)
+                .build();
+    }
+
     public static GlobalErrorResponse empty() {
         return new GlobalErrorResponse(null, null);
     }
