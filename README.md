@@ -11,17 +11,21 @@
 ## 👨‍👩‍👧 팀원 소개
 <div align="center">
     <table>
-  <th><a href="https://github.com/Garden0728"> Garden0728 </th>
-  <th><a href="https://github.com/minsu33"> 백민수 </th>
-  <th><a href="https://github.com/yunh03"> 전윤환 </th>
     <tr>
-        <td><img width="300" alt="Garden0728" src="https://avatars.githubusercontent.com/u/113418319?v=4"></td>
-    <td><img width="300" alt="백민수" src="https://avatars.githubusercontent.com/u/257681691?v=4"></td>
-        <td><img width="300" alt="전윤환" src="https://avatars.githubusercontent.com/u/57185499?v=4"></td>
+        <th width="33%"><a href="https://github.com/Garden0728">Garden0728</a></th>
+        <th width="33%"><a href="https://github.com/minsu33">백민수</a></th>
+        <th width="33%"><a href="https://github.com/yunh03">전윤환</a></th>
     </tr>
-<th> BE </th>
-<th> BE </th>
-<th> BE </th>
+    <tr>
+        <td width="33%"><img width="200" alt="Garden0728" src="https://avatars.githubusercontent.com/u/113418319?s=200&v=4"></td>
+        <td width="33%"><img width="200" alt="백민수" src="https://avatars.githubusercontent.com/u/257681691?s=200&v=4"></td>
+        <td width="33%"><img width="200" alt="전윤환" src="https://avatars.githubusercontent.com/u/57185499?s=200&v=4"></td>
+    </tr>
+    <tr>
+        <th>BE</th>
+        <th>BE</th>
+        <th>BE</th>
+    </tr>
 <tr>
 <td>
 - Gemini AI 태그 선별 호출로 연령대별 페르소나 매칭 구현<br>
