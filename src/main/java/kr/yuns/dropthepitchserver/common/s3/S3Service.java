@@ -2,6 +2,7 @@ package kr.yuns.dropthepitchserver.common.s3;
 
 import kr.yuns.dropthepitchserver.common.s3.exception.FileDownloadFailedException;
 import kr.yuns.dropthepitchserver.common.s3.exception.FileUploadFailedException;
+import kr.yuns.dropthepitchserver.common.s3.exception.FileTooLargeException;
 import kr.yuns.dropthepitchserver.common.s3.exception.InvalidFileTypeException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +22,13 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -31,6 +38,18 @@ import java.util.UUID;
 public class S3Service {
     private static final String KEY_PREFIX = "projects/";
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "png", "webp", "mp4", "pdf", "md");
+    //브라우저가 보낸 형식은 charset이 없어 한글 텍스트가 깨져 보인다. 확장자로 직접 정한다.
+    private static final Set<String> TEXT_EXTENSIONS = Set.of("md");
+    private static final long MAX_BYTES = 100L * 1024 * 1024;
+    private static final int SIGNATURE_LENGTH = 12;
+    private static final Charset CP949 = Charset.forName("x-windows-949");
+    private static final Map<String, String> CONTENT_TYPES = Map.of(
+            "md", "text/markdown; charset=UTF-8",
+            "pdf", "application/pdf",
+            "jpg", "image/jpeg",
+            "png", "image/png",
+            "webp", "image/webp",
+            "mp4", "video/mp4");
     //화면을 열어두고 리포트를 다 본 뒤에 눌러도 되도록 넉넉히 잡는다.
     private static final Duration DOWNLOAD_URL_DURATION = Duration.ofMinutes(30);
 
@@ -55,9 +74,9 @@ public class S3Service {
                     PutObjectRequest.builder()
                             .bucket(bucket)
                             .key(key)
-                            .contentType(file.getContentType())
+                            .contentType(contentType(file.getOriginalFilename()))
                             .build(),
-                    RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+                    body(file));
         } catch (IOException | SdkException e) {
             log.error("[S3Service] S3 업로드 실패: key={}, message={}", key, e.getMessage());
             throw new FileUploadFailedException();
@@ -152,6 +171,7 @@ public class S3Service {
                         .getObjectRequest(GetObjectRequest.builder()
                                 .bucket(bucket)
                                 .key(key)
+                                .responseContentType(contentType(key))
                                 .build())
                         .build())
                 .url()
@@ -173,6 +193,74 @@ public class S3Service {
             log.error("[S3Service] 허용되지 않은 확장자: {}", file.getOriginalFilename());
             throw new InvalidFileTypeException();
         }
+
+        if (file.getSize() > MAX_BYTES) {
+            log.error("[S3Service] 허용 크기 초과: {}bytes", file.getSize());
+            throw new FileTooLargeException();
+        }
+
+        if (!matchesSignature(extension(file.getOriginalFilename()), head(file))) {
+            log.error("[S3Service] 확장자와 실제 내용이 다릅니다: {}", file.getOriginalFilename());
+            throw new InvalidFileTypeException();
+        }
+    }
+
+    private byte[] head(MultipartFile file) {
+        try (InputStream in = file.getInputStream()) {
+            return in.readNBytes(SIGNATURE_LENGTH);
+        } catch (IOException e) {
+            log.error("[S3Service] 파일을 읽지 못했습니다: {}", file.getOriginalFilename());
+            throw new InvalidFileTypeException();
+        }
+    }
+
+    //확장자는 바꿔 달 수 있어 파일 앞부분으로 실제 형식을 확인한다.
+    private static boolean matchesSignature(String extension, byte[] head) {
+        return switch (extension) {
+            case "pdf" -> ascii(head, 0, 4).equals("%PDF");
+            case "png" -> head.length >= 4 && (head[0] & 0xFF) == 0x89 && ascii(head, 1, 3).equals("PNG");
+            case "jpg" -> head.length >= 3 && (head[0] & 0xFF) == 0xFF && (head[1] & 0xFF) == 0xD8;
+            case "webp" -> ascii(head, 0, 4).equals("RIFF") && ascii(head, 8, 4).equals("WEBP");
+            case "mp4" -> ascii(head, 4, 4).equals("ftyp");
+            case "md" -> isText(head);
+            default -> false;
+        };
+    }
+
+    private static String ascii(byte[] head, int offset, int length) {
+        return head.length < offset + length ? "" : new String(head, offset, length, StandardCharsets.US_ASCII);
+    }
+
+    //텍스트에는 널 바이트가 없다. 실행 파일이나 이미지를 md로 바꿔 올리면 여기서 걸린다.
+    private static boolean isText(byte[] head) {
+        for (byte b : head) {
+            if (b == 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    //윈도우에서 만든 텍스트는 CP949로 저장돼 온다. 그대로 두면 화면에서도 깨지고 분석도 깨진 글자로 한다.
+    private RequestBody body(MultipartFile file) throws IOException {
+        if (!TEXT_EXTENSIONS.contains(extension(file.getOriginalFilename()))) {
+            return RequestBody.fromInputStream(file.getInputStream(), file.getSize());
+        }
+        return RequestBody.fromBytes(toUtf8(file.getBytes()));
+    }
+
+    private static byte[] toUtf8(byte[] bytes) {
+        try {
+            StandardCharsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(bytes));
+            return bytes;
+        } catch (CharacterCodingException e) {
+            return new String(bytes, CP949).getBytes(StandardCharsets.UTF_8);
+        }
+    }
+
+    //이미 올라간 파일도 내려받을 때 이 형식으로 열리도록 서명 주소에 함께 넣는다.
+    private String contentType(String name) {
+        return CONTENT_TYPES.get(extension(name));
     }
 
     /**

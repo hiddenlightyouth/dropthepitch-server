@@ -10,6 +10,7 @@ public enum ErrorCode {
     ANALYZE_NOT_COMPLETED("C4003", "파일 분석이 아직 완료되지 않았습니다.", 400),
     INVALID_PROJECT_TITLE("C4004", "제목은 6자 이상 255자 이하여야 합니다.", 400),
     CONTENT_POLICY_VIOLATION("C4005", "대한민국 법상 허용되지 않는 내용이 포함되어 분석할 수 없습니다.", 400),
+    FILE_TOO_LARGE("C4006", "파일 크기는 100MB를 넘을 수 없습니다.", 400),
     VERIFICATION_INVALID("C4011", "인증 정보가 유효하지 않습니다.", 401),
     PASSWORD_INVALID("C4012", "비밀번호가 일치하지 않습니다.", 401),
     TOKEN_INVALID("C4013", "유효하지 않은 토큰입니다.", 401),
