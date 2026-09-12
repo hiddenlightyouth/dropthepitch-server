@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @Slf4j
 @RestControllerAdvice
@@ -30,6 +31,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(ErrorCode.INVALID_PARAMETER.getHttpStatus())
                 .body(GlobalResponse.error(ErrorCode.INVALID_PARAMETER));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<GlobalResponse<?>> handleMaxUploadSizeException(MaxUploadSizeExceededException e) {
+        log.warn("[handleMaxUploadSizeException] 업로드 크기 초과: {}", e.getMessage());
+
+        return ResponseEntity
+                .status(ErrorCode.FILE_TOO_LARGE.getHttpStatus())
+                .body(GlobalResponse.error(ErrorCode.FILE_TOO_LARGE));
     }
 
     @ExceptionHandler(Exception.class)
