@@ -29,8 +29,8 @@ spring:
         show_sql: false
   servlet:
     multipart:
-      max-file-size: ${MULTIPART_MAX_FILE_SIZE:1GB}
-      max-request-size: ${MULTIPART_MAX_REQUEST_SIZE:1GB}
+      max-file-size: ${MULTIPART_MAX_FILE_SIZE:110MB}
+      max-request-size: ${MULTIPART_MAX_REQUEST_SIZE:110MB}
   ai:
     google:
       genai:
