@@ -12,7 +12,7 @@
 <div align="center">
     <table>
     <tr>
-        <th width="33%"><a href="https://github.com/Garden0728">Garden0728</a></th>
+        <th width="33%"><a href="https://github.com/Garden0728">Garden</a></th>
         <th width="33%"><a href="https://github.com/minsu33">백민수</a></th>
         <th width="33%"><a href="https://github.com/yunh03">전윤환</a></th>
     </tr>
@@ -28,12 +28,12 @@
     </tr>
 <tr>
 <td>
-- Gemini AI 태그 선별 호출로 연령대별 페르소나 매칭 구현<br>
-- 분석 완료 후 페르소나 선별 비동기 연결, 선정 페르소나 교체 API 구현<br>
-- AI 리포트 생성과 요약, 상세 리포트 조회 API 구현<br>
-- 리포트 생성 프롬프트 및 응답 JSON 스키마 작성<br>
 - 프로젝트, 파일, 분석, AI 사용량 엔티티 및 리포지토리 설계<br>
 - 프로젝트 조회, 제목 변경 API 구현<br>
+- Gemini 태그 선별 호출로 연령대별 페르소나 매칭 구현<br>
+- 분석 완료 후 페르소나 선별 비동기 연결, 선정 페르소나 조회·교체 API 구현<br>
+- AI 리포트 생성 및 요약·상세 리포트 조회 API 구현<br>
+- 리포트 생성 프롬프트 및 응답 JSON 스키마 작성<br>
 </td>
 <td>
 - Gemini AI 파일 분석 클라이언트와 문서, 이미지, 영상별 프롬프트 구현<br>
