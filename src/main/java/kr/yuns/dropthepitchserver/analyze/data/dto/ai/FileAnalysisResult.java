@@ -12,7 +12,7 @@ public record FileAnalysisResult(
         List<String> keywords,
         List<TimelineSegment> timeline,
         AnalysisDetail detail,
-        PolicyViolation policyViolation
+        Review review
 ) {
     public record TimelineSegment(
             String startTime,
@@ -65,16 +65,10 @@ public record FileAnalysisResult(
             List<Assumption> knowledge
     ) { }
 
-    public record PolicyViolation(
-            String category,
-            String evidence
-    ) {
-        private static final String NONE = "없음";
-
-        public boolean violated() {
-            return category != null && !NONE.equals(category);
-        }
-    }
+    public record Review(
+            String verdict,
+            String reason
+    ) { }
 
     public record Assumption(
             String assumption,

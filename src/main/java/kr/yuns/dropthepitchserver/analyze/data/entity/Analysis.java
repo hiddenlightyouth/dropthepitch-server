@@ -2,6 +2,7 @@ package kr.yuns.dropthepitchserver.analyze.data.entity;
 
 import jakarta.persistence.*;
 import kr.yuns.dropthepitchserver.analyze.data.enums.AnalysisStatus;
+import kr.yuns.dropthepitchserver.analyze.data.enums.AnalysisVerdict;
 import kr.yuns.dropthepitchserver.common.jpa.BaseEntity;
 import kr.yuns.dropthepitchserver.project.data.entity.Project;
 import lombok.*;
@@ -44,8 +45,9 @@ public class Analysis extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private AnalysisStatus status;
 
-    //불법 콘텐츠로 거절했을 때만 분류가 들어간다.
-    private String rejectReason;
+    //분석을 거절했을 때만 판정이 들어간다.
+    @Enumerated(EnumType.STRING)
+    private AnalysisVerdict rejectReason;
 
     @OneToMany(mappedBy = "analysis", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("startTime ASC")
@@ -83,9 +85,9 @@ public class Analysis extends BaseEntity {
         this.status = AnalysisStatus.FAILED;
     }
 
-    public void reject(String reason) {
+    public void reject(AnalysisVerdict verdict) {
         this.status = AnalysisStatus.FAILED;
-        this.rejectReason = reason;
+        this.rejectReason = verdict;
     }
 
 

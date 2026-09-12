@@ -7,7 +7,7 @@ import kr.yuns.dropthepitchserver.analyze.data.enums.AnalysisStatus;
 import kr.yuns.dropthepitchserver.analyze.data.enums.InputType;
 import kr.yuns.dropthepitchserver.analyze.data.exception.AnalysisNotCompletedException;
 import kr.yuns.dropthepitchserver.analyze.data.exception.AnalysisNotFoundException;
-import kr.yuns.dropthepitchserver.analyze.data.exception.ContentPolicyViolationException;
+import kr.yuns.dropthepitchserver.analyze.data.exception.AnalysisRejectedException;
 import kr.yuns.dropthepitchserver.analyze.data.exception.FileNotFoundException;
 import kr.yuns.dropthepitchserver.analyze.data.repository.AnalysisRepository;
 import kr.yuns.dropthepitchserver.analyze.data.repository.FileRepository;
@@ -78,7 +78,7 @@ public class AnalyzeService {
 
         if (analysis.getRejectReason() != null) {
             log.warn("[getProjectFileAnalyzeResult] 거절된 분석 조회: projectId={}, 분류={}", projectId, analysis.getRejectReason());
-            throw new ContentPolicyViolationException();
+            throw new AnalysisRejectedException(analysis.getRejectReason());
         }
 
         File file = GET_FILE_BY_PROJECT(analysis.getProject());
