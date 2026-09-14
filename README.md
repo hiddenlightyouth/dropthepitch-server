@@ -90,6 +90,13 @@
 
 ---
 
+## 🌊 서비스 플로우
+<p align="center">
+  <img src="https://github.com/hiddenlightyouth/dropthepitch-asset/blob/main/dropthepitch-service-flow.png?raw=true" alt="apply-banner" width="100%" />
+</p>
+
+---
+
 ## 🧱 Module Structure
 
 ### Layered Architecture
