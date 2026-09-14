@@ -81,6 +81,7 @@ public class AuthService {
 
         return GlobalResponse.ok(
                 TokenResponseDto.builder()
+                        .name(user.getName())
                         .accessToken(authenticationToken.getAccessToken())
                         .refreshToken(authenticationToken.getRefreshToken())
                         .build());
@@ -95,6 +96,7 @@ public class AuthService {
 
         return GlobalResponse.ok(
                 TokenResponseDto.builder()
+                        .name(user.getName())
                         .accessToken(authenticationToken.getAccessToken())
                         .refreshToken(authenticationToken.getRefreshToken())
                         .build());
@@ -136,6 +138,7 @@ public class AuthService {
 
         return GlobalResponse.ok(
                 TokenResponseDto.builder()
+                        .name(user.getName())
                         .accessToken(authenticationToken.getAccessToken())
                         .refreshToken(authenticationToken.getRefreshToken())
                         .build());
