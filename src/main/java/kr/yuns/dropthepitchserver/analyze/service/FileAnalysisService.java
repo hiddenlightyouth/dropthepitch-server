@@ -6,22 +6,22 @@ import kr.yuns.dropthepitchserver.ai.service.dto.SaveAiUsageCommand;
 import kr.yuns.dropthepitchserver.analyze.data.dto.ai.AnalysisCallResult;
 import kr.yuns.dropthepitchserver.analyze.data.entity.File;
 import kr.yuns.dropthepitchserver.analyze.data.enums.AnalysisVerdict;
+import kr.yuns.dropthepitchserver.analyze.data.exception.FileAnalysisFailedException;
 import kr.yuns.dropthepitchserver.analyze.data.enums.InputType;
 import kr.yuns.dropthepitchserver.analyze.service.ai.AnalysisPromptLoader;
 import kr.yuns.dropthepitchserver.analyze.service.ai.GeminiAnalysisClient;
 import lombok.RequiredArgsConstructor;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.content.Media;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-//파일 내용을 AI에 보내고 결과를 저장하기까지의 흐름을 지휘한다.
-//파일 내용은 UploadedFileProcessor가 한 번 내려받아 넘겨준다.
-//@Transactional을 붙이지 않는다. AI 호출이 수십 초 걸리는데 그동안 DB 커넥션을 잡고 있으면
-//커넥션 풀이 마른다. DB 작업은 AnalysisResultService의 짧은 트랜잭션에 맡긴다.
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -55,6 +55,12 @@ public class FileAnalysisService {
             return;
         }
 
+        if (isUnreadablePdf(type, bytes)) {
+            analysisResultService.saveRejected(projectId, AnalysisVerdict.UNREADABLE);
+            log.info("[analyze] 열 수 없는 PDF라 AI를 부르지 않습니다: projectId={}", projectId);
+            return;
+        }
+
         try {
             Media media = new Media(promptLoader.mimeType(type), new ByteArrayResource(bytes));
 
@@ -64,7 +70,6 @@ public class FileAnalysisService {
                     promptLoader.schema(),
                     List.of(media));
 
-            //결과 저장이 실패해도 토큰을 쓴 기록은 남도록 먼저 따로 남긴다.
             aiService.saveAiUsage(new SaveAiUsageCommand(
                     projectId,
                     callResult.model(),
@@ -79,20 +84,29 @@ public class FileAnalysisService {
 
         } catch (Exception e) {
             log.error("[analyze] 분석 실패: projectId={}", projectId, e);
-            saveFailureQuietly(projectId);
+            saveFailureQuietly(projectId, e instanceof FileAnalysisFailedException failed ? failed.getReason() : AnalysisVerdict.AI_ERROR);
         }
     }
 
-    //실패를 기록하다가 또 실패하면 원래 오류가 묻힌다. 여기서 끊는다.
-    private void saveFailureQuietly(Long projectId) {
+    private void saveFailureQuietly(Long projectId, AnalysisVerdict reason) {
         try {
-            analysisResultService.saveFailure(projectId);
+            analysisResultService.saveFailure(projectId, reason);
         } catch (Exception e) {
             log.error("[analyze] 실패 상태 기록마저 실패: projectId={}", projectId, e);
         }
     }
 
-    //내용이 없는 텍스트는 모델에 보내면 없는 내용을 지어낸다. 부르기 전에 서버가 막는다.
+    private boolean isUnreadablePdf(InputType type, byte[] bytes) {
+        if (type != InputType.PDF) {
+            return false;
+        }
+        try (PDDocument document = Loader.loadPDF(bytes)) {
+            return document.getNumberOfPages() == 0;
+        } catch (IOException e) {
+            return true;
+        }
+    }
+
     private boolean isEmptyText(InputType type, byte[] bytes) {
         return type == InputType.MD && new String(bytes, StandardCharsets.UTF_8).strip().length() < MIN_TEXT_LENGTH;
     }

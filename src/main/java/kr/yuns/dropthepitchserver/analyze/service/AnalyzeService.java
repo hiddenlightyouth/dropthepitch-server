@@ -8,6 +8,7 @@ import kr.yuns.dropthepitchserver.analyze.data.enums.InputType;
 import kr.yuns.dropthepitchserver.analyze.data.exception.AnalysisNotCompletedException;
 import kr.yuns.dropthepitchserver.analyze.data.exception.AnalysisNotFoundException;
 import kr.yuns.dropthepitchserver.analyze.data.exception.AnalysisRejectedException;
+import kr.yuns.dropthepitchserver.analyze.data.exception.FileAnalysisFailedException;
 import kr.yuns.dropthepitchserver.analyze.data.exception.FileNotFoundException;
 import kr.yuns.dropthepitchserver.analyze.data.repository.AnalysisRepository;
 import kr.yuns.dropthepitchserver.analyze.data.repository.FileRepository;
@@ -28,7 +29,6 @@ import java.util.Optional;
 public class AnalyzeService {
     private final AnalysisRepository analysisRepository;
     private final FileRepository fileRepository;
-    //S3 key를 브라우저가 열 수 있는 임시 주소로 바꾸기 위해 사용한다.
     private final S3Service s3Service;
     private final AnalysisDetailReader analysisDetailReader;
 
@@ -77,8 +77,10 @@ public class AnalyzeService {
         Analysis analysis = GET_ANALYSIS_BY_PROJECT_ID(projectId, email);
 
         if (analysis.getRejectReason() != null) {
-            log.warn("[getProjectFileAnalyzeResult] 거절된 분석 조회: projectId={}, 분류={}", projectId, analysis.getRejectReason());
-            throw new AnalysisRejectedException(analysis.getRejectReason());
+            log.warn("[getProjectFileAnalyzeResult] 실패·거절된 분석 조회: projectId={}, 사유={}", projectId, analysis.getRejectReason());
+            throw analysis.getRejectReason().isRejected()
+                    ? new AnalysisRejectedException(analysis.getRejectReason())
+                    : new FileAnalysisFailedException(analysis.getRejectReason());
         }
 
         File file = GET_FILE_BY_PROJECT(analysis.getProject());

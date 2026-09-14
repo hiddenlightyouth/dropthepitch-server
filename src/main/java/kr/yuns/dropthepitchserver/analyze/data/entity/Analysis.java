@@ -29,11 +29,9 @@ public class Analysis extends BaseEntity {
     @JoinColumn(name = "project_id", nullable = false, unique = true)
     private Project project;
 
-    //화면에 그대로 표시되는 한 줄 요약
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    //AI 분석 상세 결과(JSON 원본). 화면에는 나가지 않고 페르소나 선별·의견 수집·리포트에서 사용한다.
     @Column(columnDefinition = "TEXT")
     private String detail;
 
@@ -45,7 +43,6 @@ public class Analysis extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private AnalysisStatus status;
 
-    //분석을 거절했을 때만 판정이 들어간다.
     @Enumerated(EnumType.STRING)
     private AnalysisVerdict rejectReason;
 
@@ -81,13 +78,9 @@ public class Analysis extends BaseEntity {
      * 분석이 실패했을 때 상태만 실패로 바꿉니다.
      * 화면이 계속 '분석중'에 머물지 않게 하기 위함입니다.
      */
-    public void fail() {
+    public void fail(AnalysisVerdict reason) {
         this.status = AnalysisStatus.FAILED;
-    }
-
-    public void reject(AnalysisVerdict verdict) {
-        this.status = AnalysisStatus.FAILED;
-        this.rejectReason = verdict;
+        this.rejectReason = reason;
     }
 
 

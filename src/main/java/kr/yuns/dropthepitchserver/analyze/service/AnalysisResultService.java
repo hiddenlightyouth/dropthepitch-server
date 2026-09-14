@@ -24,8 +24,6 @@ import tools.jackson.databind.node.ObjectNode;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-//DB 작업만 담당한다. AI 호출처럼 오래 걸리는 일은 여기에 두지 않는다.
-//트랜잭션을 짧게 유지해 커넥션을 오래 잡지 않기 위해 FileAnalysisService와 분리했다.
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -69,20 +67,17 @@ public class AnalysisResultService {
         AnalysisVerdict verdict = result.review() == null ? null : AnalysisVerdict.from(result.review().verdict());
 
         if (verdict == null) {
-            analysis.fail();
+            analysis.fail(AnalysisVerdict.AI_ERROR);
             analysis.getProject().fail();
             log.error("[saveSuccess] 판정을 읽을 수 없어 실패로 남깁니다: projectId={}, review={}", projectId, result.review());
             return;
         }
 
-        //거절이면 페르소나 선별 이벤트 없이 끝낸다.
         if (verdict != AnalysisVerdict.ANALYZABLE) {
             reject(analysis, verdict, result.review().reason());
             return;
         }
 
-        //detail에는 모델이 돌려준 원본 JSON을 넣는다.
-        //객체로 다시 만들면 record에 없는 필드가 사라져, 스키마를 고칠 때마다 자바도 고쳐야 한다.
         analysis.complete(result.summary(), withoutInternalFields(callResult.rawJson()));
 
         if (result.timeline() != null) {
@@ -113,7 +108,7 @@ public class AnalysisResultService {
     }
 
     private void reject(Analysis analysis, AnalysisVerdict verdict, String reason) {
-        analysis.reject(verdict);
+        analysis.fail(verdict);
         analysis.getProject().fail();
         log.warn("[reject] 분석을 거절합니다: projectId={}, 판정={}, 근거={}",
                 analysis.getProject().getId(), verdict.getLabel(), reason);
@@ -123,13 +118,14 @@ public class AnalysisResultService {
      * 분석 실패를 기록합니다. 화면이 계속 '분석중'에 머물지 않게 합니다.
      *
      * @param projectId 프로젝트 ID
+     * @param reason 실패 사유
      */
     @Transactional
-    public void saveFailure(Long projectId) {
+    public void saveFailure(Long projectId, AnalysisVerdict reason) {
         Analysis analysis = getAnalysis(projectId);
-        analysis.fail();
+        analysis.fail(reason);
         analysis.getProject().fail();
-        log.info("[saveFailure] 분석 실패 기록: projectId={}", projectId);
+        log.info("[saveFailure] 분석 실패 기록: projectId={}, 사유={}", projectId, reason);
     }
 
     private Analysis getAnalysis(Long projectId) {
@@ -137,7 +133,6 @@ public class AnalysisResultService {
                 .orElseThrow(AnalysisNotFoundException::new);
     }
 
-    //사이드바에 파일명 대신 AI가 지은 제목이 보이게 한다.
     private void applyAiTitle(Project project, String title) {
         //project.title은 not null이다. 여기서 비우면 분석 결과 전체가 롤백되므로 파일명을 그대로 둔다.
         if (!StringUtils.hasText(title)) {
@@ -145,7 +140,6 @@ public class AnalysisResultService {
             return;
         }
 
-        //project.title은 varchar(255)라 넘치면 저장 시점에 예외가 난다.
         project.changeTitle(title.length() <= TITLE_MAX_LENGTH
                 ? title
                 : title.substring(0, TITLE_MAX_LENGTH));
@@ -179,19 +173,16 @@ public class AnalysisResultService {
         return hours * 3600 + Integer.parseInt(matcher.group(2)) * 60 + Integer.parseInt(matcher.group(3));
     }
 
-    //모델이 같은 문장을 '화면 글자: A / 음성: A'처럼 두 번 쓰거나 '음성: 없음'을 붙이는 경우가 있어 저장 전에 정리한다.
     private static String tidy(String content) {
         return REPEATED_TEXT.matcher(content.replace(" / 음성: 없음", "")).replaceAll("$1·음성: $2");
     }
 
-    //detail은 페르소나 브리프로 그대로 넘어가므로 내부 판정 필드는 남기지 않는다.
     private String withoutInternalFields(String rawJson) {
         ObjectNode root = (ObjectNode) objectMapper.readTree(rawJson);
         root.remove("review");
         return objectMapper.writeValueAsString(root);
     }
 
-    //analysis_timeline.content는 varchar(500)이라 넘치면 저장 시점에 예외가 난다.
     private String truncate(String content) {
         return content.length() <= TIMELINE_CONTENT_MAX_LENGTH
                 ? content
