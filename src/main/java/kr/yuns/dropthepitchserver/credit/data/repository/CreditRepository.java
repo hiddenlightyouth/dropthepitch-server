@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface CreditRepository extends JpaRepository<Credit, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Credit> findWithLockByUserEmail(String email);
+
+    Optional<Credit> findByUserEmail(String email);
 }
