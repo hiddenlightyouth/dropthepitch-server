@@ -26,9 +26,6 @@ public class Credit extends BaseEntity {
     @Builder.Default
     private Integer amount = 0;
 
-    @Version
-    private Long version;
-
     public void increase(int value) {
         validateValue(value);
         this.amount += value;
