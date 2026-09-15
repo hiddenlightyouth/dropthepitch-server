@@ -4,6 +4,11 @@ import kr.yuns.dropthepitchserver.common.response.GlobalResponse;
 import kr.yuns.dropthepitchserver.common.security.AuthenticationToken;
 import kr.yuns.dropthepitchserver.common.security.JwtTokenProvider;
 import kr.yuns.dropthepitchserver.common.security.exception.TokenInvalidException;
+import kr.yuns.dropthepitchserver.credit.data.entity.Credit;
+import kr.yuns.dropthepitchserver.credit.data.repository.CreditRepository;
+import kr.yuns.dropthepitchserver.payment.data.entity.Payment;
+import kr.yuns.dropthepitchserver.payment.data.enums.PaymentReason;
+import kr.yuns.dropthepitchserver.payment.data.repository.PaymentRepository;
 import kr.yuns.dropthepitchserver.user.data.dto.request.RefreshRequestDto;
 import kr.yuns.dropthepitchserver.user.data.dto.request.SignInRequestDto;
 import kr.yuns.dropthepitchserver.user.data.dto.request.SignUpRequestDto;
@@ -33,6 +38,10 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
+    private final CreditRepository creditRepository;
+    private final PaymentRepository paymentRepository;
+
+    private static final int SIGNUP_BONUS_CREDIT = 70;
 
     @Transactional(readOnly = true)
     public User getUserEntity(String email) {
@@ -76,6 +85,8 @@ public class AuthService {
             throw new EmailDuplicationException();
         }
 
+        grantSignUpBonus(user);
+
         Authentication authentication = createAuthentication(user);
         AuthenticationToken authenticationToken = tokenProvider.generateToken(authentication);
 
@@ -85,6 +96,18 @@ public class AuthService {
                         .accessToken(authenticationToken.getAccessToken())
                         .refreshToken(authenticationToken.getRefreshToken())
                         .build());
+    }
+
+    private void grantSignUpBonus(User user) {
+        Credit credit = creditRepository.save(Credit.builder()
+                .user(user)
+                .build());
+
+        Payment payment = Payment.builder().build();
+        payment.addAmount(credit, SIGNUP_BONUS_CREDIT, PaymentReason.SIGNUP_BONUS);
+        paymentRepository.save(payment);
+
+        log.info("[grantSignUpBonus] 가입 크레딧 지급: {}, 지급 {}", user.getEmail(), SIGNUP_BONUS_CREDIT);
     }
 
     public GlobalResponse<TokenResponseDto> signIn(SignInRequestDto signInRequestDto) {
