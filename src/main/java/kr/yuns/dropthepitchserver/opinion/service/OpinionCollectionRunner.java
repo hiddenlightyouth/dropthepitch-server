@@ -130,14 +130,10 @@ public class OpinionCollectionRunner {
         Opinion opinion = opinionRepository.findById(opinionId)
                 .orElseThrow(OpinionNotFoundException::new);
 
-        opinion.updateResult(result.score(), result.summary());
+        opinion.updateResult(result.adjustedScore(), result.summary());
 
-        if (result.details() == null) {
-            return;
-        }
-
-        result.details().stream()
-                .filter(detail -> detail.type() != null && StringUtils.hasText(detail.content()))
+        result.toDetails().stream()
+                .filter(detail -> StringUtils.hasText(detail.content()))
                 .forEach(detail -> opinion.addOpinionDetail(OpinionDetail.builder()
                         .opinion(opinion)
                         .type(detail.type())

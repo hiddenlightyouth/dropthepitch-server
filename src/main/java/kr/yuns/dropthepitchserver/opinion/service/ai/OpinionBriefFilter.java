@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.List;
 public class OpinionBriefFilter {
     private static final List<String> REMOVED_FIELDS = List.of("informationGaps", "discussionPoints");
     private static final List<String> REMOVED_CLAIM_FIELDS = List.of("evidenceType", "evidence");
+    private static final String UNEXPLAINED_TERM = "자료에 설명 없음";
 
     private final ObjectMapper objectMapper;
 
@@ -40,6 +42,16 @@ public class OpinionBriefFilter {
                     claimNode.remove(REMOVED_CLAIM_FIELDS);
                 }
             });
+
+            if (detail.path("glossary") instanceof ArrayNode glossary) {
+                ArrayNode explained = objectMapper.createArrayNode();
+                glossary.forEach(entry -> {
+                    if (!UNEXPLAINED_TERM.equals(entry.path("explanationInMaterial").asString())) {
+                        explained.add(entry);
+                    }
+                });
+                detail.set("glossary", explained);
+            }
 
             return objectMapper.writeValueAsString(root);
 
