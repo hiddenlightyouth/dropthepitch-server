@@ -1,5 +1,6 @@
 package kr.yuns.dropthepitchserver.credit.service;
 
+import kr.yuns.dropthepitchserver.credit.data.dto.response.CreditHistoryPageResponseDto;
 import kr.yuns.dropthepitchserver.credit.data.dto.response.CreditHistoryResponseDto;
 import kr.yuns.dropthepitchserver.credit.data.entity.Credit;
 import kr.yuns.dropthepitchserver.credit.data.enums.CreditHistoryCategory;
@@ -43,24 +44,46 @@ public class CreditHistoryService {
      * 크레딧 사용, 충전, 적립 내역을 최신순으로 조회.
      */
     @Transactional(readOnly = true)
-    public List<CreditHistoryResponseDto> getHistory(String email, CreditHistoryCategory category) {
+    public CreditHistoryPageResponseDto getHistory(String email, CreditHistoryCategory category,
+                                                   int page, int size) {
         Credit credit = creditRepository.findByUserEmail(email).orElse(null);
 
         //크레딧 정보가 없으면 쌓인 내역도 없다.
         if (credit == null) {
             log.info("[getHistory] 크레딧 정보가 없어 빈 목록을 반환합니다: email={}", email);
-            return List.of();
+            return toPage(List.of(), page, size);
         }
 
         List<CreditHistoryResponseDto> history = fillBalance(credit, collectChanges(credit.getId()));
 
-        log.info("[getHistory] 크레딧 내역 조회: email={}, 전체 {}건, category={}",
-                email, history.size(), category);
-
-        //잔액을 다 채운 뒤에 거른다. 먼저 거르면 빠진 거래만큼 잔액이 어긋난다.
-        return history.stream()
+        //잔액을 다 채운 뒤에 거름. 먼저 거르면 빠진 거래만큼 잔액이 어긋나는 현상 발생.
+        List<CreditHistoryResponseDto> filtered = history.stream()
                 .filter(item -> category == null || item.category() == category)
                 .toList();
+
+        log.info("[getHistory] 크레딧 내역 조회: email={}, 전체 {}건, category={}, page={}",
+                email, filtered.size(), category, page);
+
+        return toPage(filtered, page, size);
+    }
+
+    //세 테이블을 시간순으로 합쳐야 해서 전부 읽은 뒤 자른다. 조회량이 문제가 되면 UNION 쿼리로 옮기는게 좋아보임
+    private CreditHistoryPageResponseDto toPage(List<CreditHistoryResponseDto> all, int page, int size) {
+        List<CreditHistoryResponseDto> items = all.stream()
+                .skip((long) page * size)
+                .limit(size)
+                .toList();
+
+        int totalPages = (int) Math.ceil((double) all.size() / size);
+
+        return CreditHistoryPageResponseDto.builder()
+                .items(items)
+                .page(page)
+                .size(size)
+                .totalCount(all.size())
+                .totalPages(totalPages)
+                .hasNext((long) (page + 1) * size < all.size())
+                .build();
     }
 
     //세 테이블에 나뉜 변동 내역을 한 목록으로 모은다.

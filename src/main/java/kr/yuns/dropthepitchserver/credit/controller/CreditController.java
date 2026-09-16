@@ -3,7 +3,7 @@ package kr.yuns.dropthepitchserver.credit.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import kr.yuns.dropthepitchserver.common.response.GlobalResponse;
 import kr.yuns.dropthepitchserver.common.security.SecurityUtil;
-import kr.yuns.dropthepitchserver.credit.data.dto.response.CreditHistoryResponseDto;
+import kr.yuns.dropthepitchserver.credit.data.dto.response.CreditHistoryPageResponseDto;
 import kr.yuns.dropthepitchserver.credit.data.dto.response.CreditResponseDto;
 import kr.yuns.dropthepitchserver.credit.data.enums.CreditHistoryCategory;
 import kr.yuns.dropthepitchserver.credit.service.CreditHistoryService;
@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 
 @RestController
 @RequestMapping("/credits")
@@ -32,8 +31,11 @@ public class CreditController {
     @GetMapping("/history")
     @Operation(summary = "크레딧 내역 조회",
             description = "사용, 충전, 적립 내역을 최신순으로 돌려줍니다. category를 주면 해당 탭만 나갑니다.")
-    public GlobalResponse<List<CreditHistoryResponseDto>> getHistory(
-            @RequestParam(required = false) CreditHistoryCategory category) {
-        return GlobalResponse.ok(creditHistoryService.getHistory(SecurityUtil.getUsername(), category));
+    public GlobalResponse<CreditHistoryPageResponseDto> getHistory(
+            @RequestParam(required = false) CreditHistoryCategory category,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return GlobalResponse.ok(
+                creditHistoryService.getHistory(SecurityUtil.getUsername(), category, page, size));
     }
 }
