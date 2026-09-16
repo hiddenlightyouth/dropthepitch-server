@@ -12,6 +12,7 @@ public enum ErrorCode {
     ANALYSIS_REJECTED("C4005", "분석할 수 없는 자료입니다.", 400),
     FILE_TOO_LARGE("C4006", "파일 크기는 100MB를 넘을 수 없습니다.", 400),
     INVALID_CREDIT_AMOUNT("C4007", "크레딧 변경 수량은 1 이상이어야 합니다.", 400),
+    VIDEO_NOT_SUPPORTED("C4008", "분석할 수 없는 영상입니다.", 400),
     VERIFICATION_INVALID("C4011", "인증 정보가 유효하지 않습니다.", 401),
     PASSWORD_INVALID("C4012", "비밀번호가 일치하지 않습니다.", 401),
     TOKEN_INVALID("C4013", "유효하지 않은 토큰입니다.", 401),

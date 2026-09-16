@@ -7,7 +7,15 @@ import kr.yuns.dropthepitchserver.analyze.data.enums.InputType;
 import kr.yuns.dropthepitchserver.analyze.data.repository.AnalysisRepository;
 import kr.yuns.dropthepitchserver.analyze.data.repository.FileRepository;
 import kr.yuns.dropthepitchserver.analyze.event.ProjectCreatedEvent;
+import kr.yuns.dropthepitchserver.analyze.data.exception.VideoNotSupportedException;
+import kr.yuns.dropthepitchserver.analyze.service.VideoDurationReader;
 import kr.yuns.dropthepitchserver.common.s3.S3Service;
+import kr.yuns.dropthepitchserver.credit.data.entity.Credit;
+import kr.yuns.dropthepitchserver.credit.data.entity.FileAnalysisCredit;
+import kr.yuns.dropthepitchserver.credit.data.enums.FileAnalysisPrice;
+import kr.yuns.dropthepitchserver.credit.data.exception.InsufficientCreditException;
+import kr.yuns.dropthepitchserver.credit.data.repository.CreditRepository;
+import kr.yuns.dropthepitchserver.credit.data.repository.FileAnalysisCreditRepository;
 import kr.yuns.dropthepitchserver.opinion.data.repository.OpinionRepository;
 import kr.yuns.dropthepitchserver.project.data.dto.response.OpinionStatusResponseDto;
 import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectResponseDto;
@@ -32,6 +40,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -51,6 +62,9 @@ public class ProjectService {
     private final OpinionRepository opinionRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final S3Service s3Service;
+    private final CreditRepository creditRepository;
+    private final FileAnalysisCreditRepository fileAnalysisCreditRepository;
+    private final VideoDurationReader videoDurationReader;
 
     /**
      * 사용자 이메일로 User를 가져옵니다.
@@ -204,8 +218,14 @@ public class ProjectService {
     @Transactional
     public ProjectResponseDto createProject(String email, MultipartFile file) {
         User user = GET_USER_BY_EMAIL(email);
-        String key = s3Service.upload(file);
         String originalFilename = file.getOriginalFilename();
+        InputType type = resolveInputType(originalFilename);
+        Integer videoSeconds = type == InputType.MP4 ? readVideoSeconds(file) : null;
+        int price = FileAnalysisPrice.of(videoSeconds);
+
+        validateEnoughCredit(email, price);
+
+        String key = s3Service.upload(file);
 
         Project project = projectRepository.save(Project.builder()
                 .user(user)
@@ -215,7 +235,7 @@ public class ProjectService {
 
         fileRepository.save(File.builder()
                 .project(project)
-                .type(resolveInputType(originalFilename))
+                .type(type)
                 .url(key)
                 .name(originalFilename)
                 .size(Math.toIntExact(file.getSize()))
@@ -229,6 +249,8 @@ public class ProjectService {
         reportRepository.save(Report.builder()
                 .project(project)
                 .build());
+
+        useCredit(email, project, price);
 
         //커밋이 끝난 뒤 분석이 시작되도록 이벤트만 발행한다. 실제 실행은 ProjectCreatedEventListener가 한다.
         eventPublisher.publishEvent(new ProjectCreatedEvent(project.getId()));
@@ -294,4 +316,55 @@ public class ProjectService {
         return InputType.valueOf(extension.toUpperCase());
     }
 
+
+    //영상은 길이에 따라 요금이 달라 업로드 시점에 길이를 읽는다. 길이를 모르면 요금을 정할 수 없어 받지 않는다.
+    private Integer readVideoSeconds(MultipartFile file) {
+        Integer seconds;
+
+        try (InputStream stream = file.getInputStream()) {
+            seconds = videoDurationReader.readSeconds(stream);
+        } catch (IOException e) {
+            log.warn("[readVideoSeconds] 영상을 읽지 못했습니다: name={}", file.getOriginalFilename());
+            throw new VideoNotSupportedException("영상을 읽지 못했습니다. 다른 파일로 올려주세요.");
+        }
+
+        if (seconds == null) {
+            log.warn("[readVideoSeconds] 영상 길이를 확인하지 못했습니다: name={}", file.getOriginalFilename());
+            throw new VideoNotSupportedException("영상 길이를 확인할 수 없습니다. 다른 파일로 올려주세요.");
+        }
+
+        if (seconds > FileAnalysisPrice.MAX_VIDEO_SECONDS) {
+            log.warn("[readVideoSeconds] 30분을 넘는 영상입니다: name={}, {}초", file.getOriginalFilename(), seconds);
+            throw new VideoNotSupportedException("영상은 30분을 넘을 수 없습니다.");
+        }
+
+        return seconds;
+    }
+
+    //파일을 올리기 전에 먼저 본다. 100MB를 다 올린 뒤 잔액 부족으로 거절하지 않기 위해서다.
+    private void validateEnoughCredit(String email, int price) {
+        int amount = creditRepository.findByUserEmail(email)
+                .map(Credit::getAmount)
+                .orElse(0);
+
+        if (amount < price) {
+            log.warn("[validateEnoughCredit] 크레딧 부족: email={}, 필요 {}, 보유 {}", email, price, amount);
+            throw new InsufficientCreditException();
+        }
+    }
+
+    private void useCredit(String email, Project project, int price) {
+        Credit credit = creditRepository.findWithLockByUserEmail(email)
+                .orElseThrow(() -> {
+                    log.warn("[useCredit] 크레딧 정보가 없습니다: projectId={}, email={}", project.getId(), email);
+                    return new InsufficientCreditException();
+                });
+
+        FileAnalysisCredit fileAnalysisCredit = FileAnalysisCredit.builder().build();
+        fileAnalysisCredit.use(credit, project, price);
+        fileAnalysisCreditRepository.save(fileAnalysisCredit);
+
+        log.info("[useCredit] 새 작업 크레딧 차감: projectId={}, 차감 {}, 잔액 {}",
+                project.getId(), price, credit.getAmount());
+    }
 }
