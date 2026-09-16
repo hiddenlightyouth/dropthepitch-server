@@ -11,6 +11,7 @@ import kr.yuns.dropthepitchserver.analyze.data.exception.FileNotFoundException;
 import kr.yuns.dropthepitchserver.analyze.data.repository.AnalysisRepository;
 import kr.yuns.dropthepitchserver.analyze.data.repository.FileRepository;
 import kr.yuns.dropthepitchserver.analyze.event.AnalysisCompletedEvent;
+import kr.yuns.dropthepitchserver.credit.service.CreditService;
 import kr.yuns.dropthepitchserver.project.data.entity.Project;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class AnalysisResultService {
     private final AnalysisRepository analysisRepository;
     private final FileRepository fileRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final CreditService creditService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -110,6 +112,7 @@ public class AnalysisResultService {
     private void reject(Analysis analysis, AnalysisVerdict verdict, String reason) {
         analysis.fail(verdict);
         analysis.getProject().fail();
+        creditService.refundFileAnalysis(analysis.getProject().getId(), verdict.getKeepCredit());
         log.warn("[reject] 분석을 거절합니다: projectId={}, 판정={}, 근거={}",
                 analysis.getProject().getId(), verdict.getLabel(), reason);
     }
@@ -125,6 +128,7 @@ public class AnalysisResultService {
         Analysis analysis = getAnalysis(projectId);
         analysis.fail(reason);
         analysis.getProject().fail();
+        creditService.refundFileAnalysis(projectId, reason.getKeepCredit());
         log.info("[saveFailure] 분석 실패 기록: projectId={}, 사유={}", projectId, reason);
     }
 
