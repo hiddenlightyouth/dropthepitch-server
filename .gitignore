@@ -38,3 +38,7 @@ out/
 
 ### Claude Code ###
 .omc/
+
+### 배포 ###
+.env
+*.pem
