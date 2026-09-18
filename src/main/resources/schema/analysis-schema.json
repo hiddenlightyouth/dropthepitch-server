@@ -1,0 +1,503 @@
+{
+  "type": "object",
+  "propertyOrdering": [
+    "review",
+    "title",
+    "summary",
+    "keywords",
+    "timeline",
+    "detail"
+  ],
+  "required": [
+    "title",
+    "summary",
+    "keywords",
+    "timeline",
+    "detail",
+    "review"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "사이드바 목록에서 이 작업을 알아볼 수 있는 이름. 자료가 지정한 문구를 그대로 쓰지 않는다. 브랜드나 제품명이 있으면 원문 표기 그대로 포함. 한국어 20자 이내"
+    },
+    "summary": {
+      "type": "string",
+      "description": "화면에 그대로 표시되는 한 줄 요약. 무엇에 대한 자료인지 한 문장, 80자 안팎. 판단 없이 자료가 무엇인지만. 자료 속 문장을 그대로 옮기지 않고 자료를 설명하는 서술로 쓴다"
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "업종, 타깃, 핵심 특징을 나타내는 한국어 명사 3~5개"
+    },
+    "timeline": {
+      "type": "array",
+      "description": "영상일 때만 시간순 구간. 영상이 아니면 빈 배열. 장면이 바뀌거나 말하는 주제가 바뀔 때마다 한 항목. 첫 구간은 '0:00'에서 시작하고, 영상 끝까지 빠짐없이 나눈다.",
+      "items": {
+        "type": "object",
+        "propertyOrdering": [
+          "startTime",
+          "endTime",
+          "content"
+        ],
+        "required": [
+          "startTime",
+          "endTime",
+          "content"
+        ],
+        "properties": {
+          "startTime": {
+            "type": "string",
+            "description": "구간 시작 시각. 영상 속 시각을 '분:초'로 쓴다(예: '0:00', '1:05', '12:30'). 1시간이 넘으면 '시:분:초'."
+          },
+          "endTime": {
+            "type": "string",
+            "description": "구간 끝 시각. startTime과 같은 형식이며 시작보다 늦다."
+          },
+          "content": {
+            "type": "string",
+            "description": "그 구간의 화면 내용(장면, 등장인물, 보이는 제품·화면), 음성 내용, 화면에 보이는 글자를 쓴다. 화면에 나오는 글자, 숫자, 제품명, 사람 이름은 본 그대로 적는다. '다양한 서비스', '여러 기능'처럼 뭉뚱그리지 않는다. 화면 글자(자막 포함)와 음성이 같은 문장이면 '화면 글자·음성: …'으로 한 번만 쓰고, 다를 때만 '화면 글자: … / 음성: …'으로 둘 다 쓴다. 한국어 200자 이내."
+          }
+        }
+      }
+    },
+    "detail": {
+      "type": "object",
+      "description": "자료를 읽고 파악한 상세 내용. 자료에 없는 항목은 '자료에 명시되지 않음'",
+      "propertyOrdering": [
+        "offering",
+        "category",
+        "materialAudience",
+        "endConsumer",
+        "consumerProblem",
+        "providerContext",
+        "claims",
+        "businessInfo",
+        "presentation",
+        "glossary",
+        "targetAudience",
+        "userAssumptions",
+        "discussionPoints",
+        "informationGaps",
+        "uncertainties"
+      ],
+      "required": [
+        "offering",
+        "category",
+        "materialAudience",
+        "endConsumer",
+        "consumerProblem",
+        "providerContext",
+        "claims",
+        "businessInfo",
+        "presentation",
+        "glossary",
+        "targetAudience",
+        "userAssumptions",
+        "discussionPoints",
+        "informationGaps",
+        "uncertainties"
+      ],
+      "properties": {
+        "offering": {
+          "type": "string",
+          "description": "제안하는 제품, 서비스, 캠페인이 무엇인지 2~3문장으로. 브랜드명과 제품명은 원문 표기 그대로"
+        },
+        "category": {
+          "type": "string",
+          "description": "자료의 종류와 업종. 예: '피부관리 서비스 사업 기획안', '즉석식품 TV 광고', '화장품 상세페이지'"
+        },
+        "materialAudience": {
+          "type": "string",
+          "enum": [
+            "소비자 대상",
+            "사업자·기관 대상",
+            "투자자·심사 대상",
+            "혼합",
+            "판단 불가"
+          ],
+          "description": "자료가 읽는 사람을 어떤 자격으로 부르는지로 정한다. 개인 생활자로서 부르면 '소비자 대상'. 사업·직무·조직 운영의 자격으로 부르면 '사업자·기관 대상'이며 창업자·예비창업자·소상공인·담당자·기관이 여기 속한다(개인이어도 이 자격으로 불리면 여기). 자금 지원·심사·선정을 결정하는 사람으로 부르면 '투자자·심사 대상'. 두 자격을 자료가 명시적으로 나누어 부를 때만 '혼합'. 누구를 부르는지 알 수 없는 자료만 '판단 불가'. 이 값은 자료가 말을 거는 상대이며 endConsumer(제품을 쓰는 사람)와 다를 수 있다."
+        },
+        "endConsumer": {
+          "type": "string",
+          "description": "이 제품이나 서비스를 결국 쓰게 될 사람이 누구인지. 자료가 명시했으면 그 표현으로, 명시가 없으면 자료의 문제 서술·기능·가격·채널에서 추정하고 끝에 '(추정: 근거 위치)'를 붙인다. 자료가 개발자·운영자·중간 사업자를 향해 쓰였고 그들이 만든 것을 쓰는 최종 사용자가 따로 있으면, 여기에는 최종 사용자를 쓴다. 자료의 대상이 이미 최종 사용자면 '자료의 대상과 동일'. 근거가 없으면 '자료에서 추정 근거를 찾을 수 없음'"
+        },
+        "consumerProblem": {
+          "type": "string",
+          "description": "자료가 말하는 최종 소비자의 불편, 욕구, 상황. 주어가 사람인 문장만. 회사나 시장의 문제는 여기에 쓰지 않는다. 없으면 '자료에 명시되지 않음'"
+        },
+        "providerContext": {
+          "type": "string",
+          "description": "제작자·주최 측 자신에 대한 서술: 회사·팀·연혁·실적·파트너·재무 상태·운영 방식·신청자 선정 절차. 주어는 제작자·주최 측. 숫자는 claims에도 다시 넣는다."
+        },
+        "claims": {
+          "type": "array",
+          "description": "개수는 자료가 정한다. 자료가 세상에 대해 말하는 검증 가능한 주장(시장·고객·문제의 크기, 효과, 비교 우위, 실적)을 통계·비율·수치를 포함해 빠짐없이 넣는다. consumerProblem과 providerContext에 쓴 숫자도 반드시 다시 넣는다. 구분 검사: 그 문장이 참인지 확인하려면 자료 밖의 사실을 봐야 하면 claim이다. 제작자가 정하면 그대로 참이 되는 문장(가격, 모집 규모, 정원, 기간, 일정, 제공 항목, 기능, 계획)은 claim이 아니라 businessInfo나 offering에 쓴다.",
+          "items": {
+            "type": "object",
+            "propertyOrdering": [
+              "claim",
+              "evidenceType",
+              "evidence",
+              "source"
+            ],
+            "required": [
+              "claim",
+              "evidenceType",
+              "evidence",
+              "source"
+            ],
+            "properties": {
+              "claim": {
+                "type": "string",
+                "description": "주장 문장을 자료 표기 그대로. 숫자·단위·비교 대상을 바꾸지 않는다."
+              },
+              "evidence": {
+                "type": "string",
+                "description": "evidenceType이 '근거 없음'이면 정확히 '근거 없음'이라고만 쓴다. 그 외에는 자료에 적힌 출처명·조사 내용·비교 대상·인증명을 그대로 옮긴다. 자료에 없는 말을 보태지 않는다."
+              },
+              "source": {
+                "type": "string",
+                "description": "자료 안 위치. PDF는 'p.N'(파일의 N번째 페이지). 마크다운·텍스트는 헤딩 경로('## 제목 > ### 소제목'), 헤딩이 없으면 'N번째 문단'. 이미지는 영역(상단·중앙·좌하단 등). 영상은 mm:ss 또는 mm:ss–mm:ss와 출처(자막·음성·화면 글자). 페이지가 없는 자료에 페이지 번호를 만들어 쓰지 않는다."
+              },
+              "evidenceType": {
+                "type": "string",
+                "enum": [
+                  "외부 출처",
+                  "자체 조사",
+                  "시연·인증·비교",
+                  "근거 없음"
+                ],
+                "description": "자료가 이 주장을 어떻게 뒷받침했는지 하나만 고른다. '외부 출처': 자료 밖의 조사 기관·통계·논문·기사·공공 데이터를 이름으로 밝힘. '자체 조사': 제작자가 직접 한 설문·실험·측정·데이터 분석이라고 밝히고 무엇을 어떻게 조사했는지(대상·방법·데이터)가 적혀 있음. '시연·인증·비교': 시연, 인증 기관·마크, 비교 대상이 명시된 비교. '근거 없음': 숫자·주장만 있고 그것을 얻은 방법이 적혀 있지 않음. 계산·추산·계획·예상·분석했다는 말만 있고 무엇으로 했는지가 없으면 방법이 아니므로 '근거 없음'이다. 유명인 출연, 전문가가 만들었다는 말도 '근거 없음'이다."
+              }
+            }
+          }
+        },
+        "businessInfo": {
+          "type": "string",
+          "description": "endConsumer가 이 제품·서비스를 사거나 쓸 때 만나는 조건: 가격, 요금제, 무료·유료 범위, 모집 규모·정원, 기간·일정, 제공 항목, 자격 요건, 지역, 신청·구매 채널. 자료 표기 그대로. 기술 사양, 시스템 구성, 개발자용 연동 방법은 여기 쓰지 않고 offering이나 presentation에 쓴다. 해당 내용이 자료에 없으면 '자료에 없음'."
+        },
+        "presentation": {
+          "type": "string",
+          "description": "톤앤매너, 등장인물, 시각 및 청각 연출, 문서는 구성과 디자인. 사실만"
+        },
+        "glossary": {
+          "type": "array",
+          "description": "자료에 나온 전문 용어·줄임말·고유 명칭·외국어 표기 전부. 풀이는 자료 안에 있는 것만 옮긴다. 자료에 풀이가 없으면 explanationInMaterial은 정확히 '자료에 설명 없음'. 자료 밖 지식이나 짐작한 풀네임은 어느 필드에도 쓰지 않는다.",
+          "items": {
+            "type": "object",
+            "propertyOrdering": [
+              "term",
+              "explanationInMaterial",
+              "context"
+            ],
+            "required": [
+              "term",
+              "explanationInMaterial",
+              "context"
+            ],
+            "properties": {
+              "term": {
+                "type": "string",
+                "description": "자료 표기 그대로. 줄임말은 풀어 쓰지 않고, 구성 요소를 자료가 말한 만큼만 쓴다."
+              },
+              "explanationInMaterial": {
+                "type": "string",
+                "description": "자료가 직접 설명한 뜻만. 괄호 안 풀이나 다른 문단의 설명도 자료의 설명이다. '자료에 설명 없음'이라고 쓰기 전에 자료 전체를 다시 확인한다. 추정은 여기에 쓰지 않는다"
+              },
+              "context": {
+                "type": "string",
+                "description": "그 용어가 쓰인 원문 문장. 자료 안 위치. PDF는 'p.N'(파일의 N번째 페이지). 마크다운·텍스트는 헤딩 경로('## 제목 > ### 소제목'), 헤딩이 없으면 'N번째 문단'. 이미지는 영역(상단·중앙·좌하단 등). 영상은 mm:ss 또는 mm:ss–mm:ss와 출처(자막·음성·화면 글자). 페이지가 없는 자료에 페이지 번호를 만들어 쓰지 않는다."
+              }
+            }
+          }
+        },
+        "targetAudience": {
+          "type": "string",
+          "description": "자료가 직접 말한 타깃. 연령, 성별, 상황, 직업 등 자료에 드러난 대로. 자료가 말하지 않았으면 '자료에 명시되지 않음'"
+        },
+        "userAssumptions": {
+          "type": "object",
+          "description": "이 제품·서비스를 쓰려면 사용자에게 전제되는 조건. 자료가 사용자에게 무엇을 요구하는지를 여덟 차원으로 나눠 점검한다. 차원마다 자료에서 신호를 찾아 있으면 항목으로 적고, 없으면 빈 배열로 둔다. 빈 배열은 정답이다. 한 조건이 두 차원에 걸치면 각 차원에 따로 쓴다. 각 항목의 basis는 자료의 실제 문장·장면이어야 한다. 조건 자체만 쓰고, 그 조건을 못 맞추는 사람이 누구인지나 어떻게 느낄지는 쓰지 않는다.",
+          "propertyOrdering": [
+            "cost",
+            "time",
+            "health",
+            "digital",
+            "region",
+            "trust",
+            "eligibility",
+            "knowledge"
+          ],
+          "required": [
+            "cost",
+            "time",
+            "health",
+            "digital",
+            "region",
+            "trust",
+            "eligibility",
+            "knowledge"
+          ],
+          "properties": {
+            "cost": {
+              "type": "array",
+              "description": "비용 차원. 신호: 가격, 요금, 유료 전환, 추가 구매, 본인 부담, 지원 제외 항목, 필요한 장비 구입.",
+              "items": {
+                "type": "object",
+                "propertyOrdering": [
+                  "assumption",
+                  "basis"
+                ],
+                "required": [
+                  "assumption",
+                  "basis"
+                ],
+                "properties": {
+                  "assumption": {
+                    "type": "string",
+                    "description": "전제 조건을 한 문장으로. 사실 서술만."
+                  },
+                  "basis": {
+                    "type": "string",
+                    "description": "그 조건을 보여주는 자료의 실제 문장을 인용하고 위치를 붙인다. 위치 표기는 시스템 규칙을 따른다."
+                  }
+                }
+              }
+            },
+            "time": {
+              "type": "array",
+              "description": "시간 차원. 신호: 이용 기간, 참여 기간, 필수 참석(설명회·오리엔테이션·교육), 응답·제출 의무, 사용 빈도, 대기 시간, 일정 제약.",
+              "items": {
+                "type": "object",
+                "propertyOrdering": [
+                  "assumption",
+                  "basis"
+                ],
+                "required": [
+                  "assumption",
+                  "basis"
+                ],
+                "properties": {
+                  "assumption": {
+                    "type": "string",
+                    "description": "전제 조건을 한 문장으로. 사실 서술만."
+                  },
+                  "basis": {
+                    "type": "string",
+                    "description": "그 조건을 보여주는 자료의 실제 문장을 인용하고 위치를 붙인다. 위치 표기는 시스템 규칙을 따른다."
+                  }
+                }
+              }
+            },
+            "health": {
+              "type": "array",
+              "description": "신체·건강 차원. 신호: 신체 조건, 피부·체질, 질환·알레르기, 체력, 시력·청력, 임신·연령 제한.",
+              "items": {
+                "type": "object",
+                "propertyOrdering": [
+                  "assumption",
+                  "basis"
+                ],
+                "required": [
+                  "assumption",
+                  "basis"
+                ],
+                "properties": {
+                  "assumption": {
+                    "type": "string",
+                    "description": "전제 조건을 한 문장으로. 사실 서술만."
+                  },
+                  "basis": {
+                    "type": "string",
+                    "description": "그 조건을 보여주는 자료의 실제 문장을 인용하고 위치를 붙인다. 위치 표기는 시스템 규칙을 따른다."
+                  }
+                }
+              }
+            },
+            "digital": {
+              "type": "array",
+              "description": "디지털 차원. 신호: 앱 설치, 온라인 신청·결제, 계정 보유, 기기 요건, 사진·데이터 업로드, SNS 사용.",
+              "items": {
+                "type": "object",
+                "propertyOrdering": [
+                  "assumption",
+                  "basis"
+                ],
+                "required": [
+                  "assumption",
+                  "basis"
+                ],
+                "properties": {
+                  "assumption": {
+                    "type": "string",
+                    "description": "전제 조건을 한 문장으로. 사실 서술만."
+                  },
+                  "basis": {
+                    "type": "string",
+                    "description": "그 조건을 보여주는 자료의 실제 문장을 인용하고 위치를 붙인다. 위치 표기는 시스템 규칙을 따른다."
+                  }
+                }
+              }
+            },
+            "region": {
+              "type": "array",
+              "description": "지역 차원. 신호: 이용 가능 지역, 방문해야 하는 장소, 배송 지역, 오프라인 행사 장소, 국내·해외 제한.",
+              "items": {
+                "type": "object",
+                "propertyOrdering": [
+                  "assumption",
+                  "basis"
+                ],
+                "required": [
+                  "assumption",
+                  "basis"
+                ],
+                "properties": {
+                  "assumption": {
+                    "type": "string",
+                    "description": "전제 조건을 한 문장으로. 사실 서술만."
+                  },
+                  "basis": {
+                    "type": "string",
+                    "description": "그 조건을 보여주는 자료의 실제 문장을 인용하고 위치를 붙인다. 위치 표기는 시스템 규칙을 따른다."
+                  }
+                }
+              }
+            },
+            "trust": {
+              "type": "array",
+              "description": "신뢰 차원. 신호: 개인정보·사진·건강정보 제공, 결제 정보 등록, 신원 확인, 계정 연동·권한 부여, 특정 회사·기관에 대한 의존.",
+              "items": {
+                "type": "object",
+                "propertyOrdering": [
+                  "assumption",
+                  "basis"
+                ],
+                "required": [
+                  "assumption",
+                  "basis"
+                ],
+                "properties": {
+                  "assumption": {
+                    "type": "string",
+                    "description": "전제 조건을 한 문장으로. 사실 서술만."
+                  },
+                  "basis": {
+                    "type": "string",
+                    "description": "그 조건을 보여주는 자료의 실제 문장을 인용하고 위치를 붙인다. 위치 표기는 시스템 규칙을 따른다."
+                  }
+                }
+              }
+            },
+            "eligibility": {
+              "type": "array",
+              "description": "자격·소속 차원. 자료가 신분·소속·이력으로 정한 조건. 신호: 국적, 연령 제한, 재학·졸업·학년·성적, 소속 기관·참여 대학·회원 여부, 사업자 등록·업력·업종, 자격증·면허, 취업·창업 상태, 제외 대상, 대상 기기·모델·연식. 자료가 '~인 자', '~만 가능', '~ 제외'로 적은 것이 여기다.",
+              "items": {
+                "type": "object",
+                "propertyOrdering": [
+                  "assumption",
+                  "basis"
+                ],
+                "required": [
+                  "assumption",
+                  "basis"
+                ],
+                "properties": {
+                  "assumption": {
+                    "type": "string",
+                    "description": "전제 조건을 한 문장으로. 사실 서술만."
+                  },
+                  "basis": {
+                    "type": "string",
+                    "description": "그 조건을 보여주는 자료의 실제 문장을 인용하고 위치를 붙인다. 위치 표기는 시스템 규칙을 따른다."
+                  }
+                }
+              }
+            },
+            "knowledge": {
+              "type": "array",
+              "description": "지식·경험 차원. 자료가 설명 없이 이미 알고 있다고 전제하는 것. 신호: glossary에서 '자료에 설명 없음'인 용어를 알아야 이해되는 설명, 요구되는 경험·기술, 외국어로만 적힌 안내. 자격 요건은 eligibility에, 자료가 알려주지 않는 정보는 informationGaps에 쓴다.",
+              "items": {
+                "type": "object",
+                "propertyOrdering": [
+                  "assumption",
+                  "basis"
+                ],
+                "required": [
+                  "assumption",
+                  "basis"
+                ],
+                "properties": {
+                  "assumption": {
+                    "type": "string",
+                    "description": "전제 조건을 한 문장으로. 사실 서술만."
+                  },
+                  "basis": {
+                    "type": "string",
+                    "description": "그 조건을 보여주는 자료의 실제 문장을 인용하고 위치를 붙인다. 위치 표기는 시스템 규칙을 따른다."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "discussionPoints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "같은 자료를 봐도 사람에 따라 평가가 갈릴 만한 지점. 점검 순서: offering의 핵심 요소 각각, evidenceType이 '근거 없음'인 claim 각각, userAssumptions의 항목 각각을 보며 '이 선택을 두고 다르게 볼 여지가 있는가'를 확인한다. 점검 대상을 하나도 건너뛰지 않고, 여지가 있는 것은 빠짐없이 넣는다. 각 항목은 '~라는 시각과, ~라는 시각이 있을 수 있다' 형태의 완결된 문장. 'A vs B'처럼 명사만 나열하지 않는다. 두 시각 모두 자료 내용에서 출발해야 한다. 갈릴 지점이 없으면 넣지 않는다. 누가 어느 쪽일지는 쓰지 않는다."
+        },
+        "informationGaps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "사람이 이용을 결정하려면 알아야 하는데 자료에 없는 것. 여덟 항목을 순서대로 하나씩 자료와 대조한다: (1) 가격과 추가 비용 (2) 사용 조건과 제약 (3) 효과의 근거 (4) 안전성과 부작용 (5) 개인정보 처리 (6) 해지와 환불 (7) 이용 가능 지역과 시기 (8) 이용 절차와 소요 기간. 자료에 없는 항목은 여덟 개 모두 확인한 뒤 빠짐없이 적는다. 몇 개에서 멈추지 않는다. 자료에 있는 항목은 적지 않는다. 각 항목은 무엇을 알 수 없는지 한 문장으로 쓴다."
+        },
+        "uncertainties": {
+          "type": "array",
+          "description": "자료 자체의 문제만 적는다. 네 가지 접두어만 쓴다. '판독 불확실: '(글자·숫자가 흐리거나 잘림), '청취 불확실: '(음성이 불명확), '자료 내 상충: '(같은 항목이 자료 안에서 다르게 적힘), '지시 대상 불명: '(무엇을 가리키는지 자료만으로 알 수 없음). 짐작이나 추정은 여기에 쓰지 않는다. 문제가 없으면 빈 배열이며 그것이 정답이다.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "description": "이 자료를 분석해도 되는지 판정한다. 자료가 무엇을 담고 있는지에 대한 사실 판단이며, 품질 평가가 아니다. 확실하지 않으면 '분석 가능'으로 둔다.",
+      "propertyOrdering": [
+        "verdict",
+        "reason"
+      ],
+      "required": [
+        "verdict",
+        "reason"
+      ],
+      "properties": {
+        "verdict": {
+          "type": "string",
+          "enum": [
+            "분석 가능",
+            "내용 없음",
+            "분석 대상 아님",
+            "법상 불가",
+            "성인·선정적",
+            "분석 조작 시도",
+            "개인정보 포함"
+          ],
+          "description": "시스템 지시의 [검토 기준]에 따라 정한다."
+        },
+        "reason": {
+          "type": "string",
+          "description": "'분석 가능'이 아니면 그렇게 판단한 자료의 문구와 위치. '분석 가능'이면 빈 문자열."
+        }
+      }
+    }
+  },
+  "description": "출시 전 자료 분석 브리프 v4.0. 자료에 무엇이 있는지만 정리한다. 자료에 있는 사실만 쓰고, 추정은 허용된 필드에서 근거 위치와 함께만 쓴다. 빈 배열과 '없음'은 정상 값이다."
+}

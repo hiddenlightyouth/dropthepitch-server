@@ -24,6 +24,6 @@ public class GlobalResponse<T> {
     }
 
     public static <T> GlobalResponse<T> error(GlobalException e) {
-        return error(e.getErrorCode());
+        return new GlobalResponse<>(null, GlobalErrorResponse.from(e.getErrorCode(), e.getDetail()));
     }
 }

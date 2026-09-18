@@ -1,0 +1,370 @@
+package kr.yuns.dropthepitchserver.project.service;
+
+import kr.yuns.dropthepitchserver.analyze.data.entity.Analysis;
+import kr.yuns.dropthepitchserver.analyze.data.entity.File;
+import kr.yuns.dropthepitchserver.analyze.data.enums.AnalysisStatus;
+import kr.yuns.dropthepitchserver.analyze.data.enums.InputType;
+import kr.yuns.dropthepitchserver.analyze.data.repository.AnalysisRepository;
+import kr.yuns.dropthepitchserver.analyze.data.repository.FileRepository;
+import kr.yuns.dropthepitchserver.analyze.event.ProjectCreatedEvent;
+import kr.yuns.dropthepitchserver.analyze.data.exception.VideoNotSupportedException;
+import kr.yuns.dropthepitchserver.analyze.service.VideoDurationReader;
+import kr.yuns.dropthepitchserver.common.s3.S3Service;
+import kr.yuns.dropthepitchserver.credit.data.entity.Credit;
+import kr.yuns.dropthepitchserver.credit.data.entity.FileAnalysisCredit;
+import kr.yuns.dropthepitchserver.credit.data.enums.FileAnalysisPrice;
+import kr.yuns.dropthepitchserver.credit.data.exception.InsufficientCreditException;
+import kr.yuns.dropthepitchserver.credit.data.repository.CreditRepository;
+import kr.yuns.dropthepitchserver.credit.data.repository.FileAnalysisCreditRepository;
+import kr.yuns.dropthepitchserver.opinion.data.repository.OpinionRepository;
+import kr.yuns.dropthepitchserver.project.data.dto.response.OpinionStatusResponseDto;
+import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectResponseDto;
+import kr.yuns.dropthepitchserver.project.data.dto.response.ProjectStatusResponseDto;
+import kr.yuns.dropthepitchserver.project.data.dto.response.SidebarProjectResponseDto;
+import kr.yuns.dropthepitchserver.project.data.entity.Project;
+import kr.yuns.dropthepitchserver.project.data.enums.OpinionCollectionStatus;
+import kr.yuns.dropthepitchserver.project.data.enums.ProjectStatus;
+import kr.yuns.dropthepitchserver.project.data.exception.InvalidProjectTitleException;
+import kr.yuns.dropthepitchserver.project.data.exception.ProjectNotFoundException;
+import kr.yuns.dropthepitchserver.project.data.repository.ProjectRepository;
+import kr.yuns.dropthepitchserver.project.event.ProjectDeletedEvent;
+import kr.yuns.dropthepitchserver.report.data.entity.Report;
+import kr.yuns.dropthepitchserver.report.data.repository.ReportRepository;
+import kr.yuns.dropthepitchserver.user.data.entity.User;
+import kr.yuns.dropthepitchserver.user.data.exception.UserNotFoundException;
+import kr.yuns.dropthepitchserver.user.data.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class ProjectService {
+    private static final int TITLE_MIN_LENGTH = 6;
+    private static final int TITLE_MAX_LENGTH = 255;
+
+    private final UserRepository userRepository;
+    private final ProjectRepository projectRepository;
+    private final FileRepository fileRepository;
+    private final ReportRepository reportRepository;
+    private final AnalysisRepository analysisRepository;
+    private final OpinionRepository opinionRepository;
+    private final ApplicationEventPublisher eventPublisher;
+    private final S3Service s3Service;
+    private final CreditRepository creditRepository;
+    private final FileAnalysisCreditRepository fileAnalysisCreditRepository;
+    private final VideoDurationReader videoDurationReader;
+
+    /**
+     * 사용자 이메일로 User를 가져옵니다.
+     *
+     * @param email 이메일 주소
+     * @return User
+     */
+    private User GET_USER_BY_EMAIL(String email) {
+        Optional<User> user = userRepository.findByEmail(email);
+
+        if (user.isPresent()) {
+            return user.get();
+        } else {
+            log.error("[GET_USER_BY_EMAIL] 사용자 정보 조회 실패: {}", email);
+            throw new UserNotFoundException();
+        }
+    }
+
+    /**
+     * 사이드바의 내 작업 목록을 조회합니다.
+     *
+     * @param email 이메일 주소
+     * @return 프로젝트 ID, 프로젝트 명, 상태
+     */
+    public List<SidebarProjectResponseDto> getSidebarProject(String email) {
+        User user = GET_USER_BY_EMAIL(email);
+        List<Project> projectList = projectRepository.findAllByUserOrderByUpdatedAtDesc(user);
+        log.info("[getSidebarProject] 사용자 사이드바 프로젝트 정보 조회: {}", email);
+        return projectList.stream()
+                .map(project -> SidebarProjectResponseDto.builder()
+                        .projectId(project.getId())
+                        .title(project.getTitle())
+                        .status(project.getStatus())
+                        .date(project.getUpdatedAt())
+                        .build())
+                .toList();
+    }
+    private Project getProjectEntity(String email, Long projectId) {
+        return projectRepository.findByIdAndUserEmail(projectId, email)
+                .orElseThrow(() -> {
+                    log.warn("[getProjectEntity] 프로젝트 조회 실패: projectId={}, email={}", projectId, email);
+                    return new ProjectNotFoundException();
+                });
+    }
+    /**
+     * 프로젝트 제목을 사용자가 정한 이름으로 바꿈.
+     */
+    @Transactional
+    public SidebarProjectResponseDto changeTitle(String email, Long projectId, String title) {
+        Project project = getProjectEntity(email, projectId);
+        project.changeTitle(resolveTitle(project, title));
+
+        log.info("[changeTitle] 프로젝트 제목 변경: projectId={}", projectId);
+
+        return SidebarProjectResponseDto.builder()
+                .projectId(project.getId())
+                .title(project.getTitle())
+                .status(project.getStatus())
+                .date(project.getUpdatedAt())
+                .build();
+    }
+
+    private String resolveTitle(Project project, String title) {
+        if (!StringUtils.hasText(title)) {
+            log.info("[changeTitle] 제목이 비어 있어 기존 제목을 유지합니다: projectId={}", project.getId());
+            return project.getTitle();
+        }
+
+        String trimmed = title.trim();
+        if (trimmed.length() < TITLE_MIN_LENGTH || trimmed.length() > TITLE_MAX_LENGTH) {
+            log.warn("[changeTitle] 제목 길이가 벗어났습니다: projectId={}, 길이={}", project.getId(), trimmed.length());
+            throw new InvalidProjectTitleException();
+        }
+        return trimmed;
+    }
+
+    @Transactional(readOnly = true)
+    public ProjectResponseDto getProject(String email, Long projectId) {
+        Project project = getProjectEntity(email, projectId);
+
+        ProjectResponseDto.FileDto file = fileRepository.findByProjectId(projectId)
+                .map(f -> new ProjectResponseDto.FileDto(
+                        f.getName(),
+                        f.getSize(),
+                        f.getType(),
+                        //DB에는 S3 key가 들어있어 브라우저가 열 수 없다. 조회 시점에 임시 주소로 바꾼다.
+                        s3Service.getDownloadUrl(f.getUrl()),
+                        s3Service.getDownloadUrl(f.getThumbnailUrl())))
+                .orElse(null);
+
+        String reportId = reportRepository.findByProjectId(projectId)
+                .map(Report::getUuid)
+                .orElse(null);
+
+        return new ProjectResponseDto(
+                project.getId(),
+                project.getTitle(),
+                project.getStatus(),
+                project.getCreatedAt(),
+                file,
+                reportId);
+    }
+
+    /**
+     * 프로젝트 상태를 조회합니다.
+     *
+     * @param email 사용자 이메일 주소
+     * @param projectId 프로젝트 고유 ID
+     * @return ProjectStatusResponseDto
+     */
+    public ProjectStatusResponseDto getProjectStatus(String email, Long projectId) {
+        Project project = getProjectEntity(email, projectId);
+
+        return ProjectStatusResponseDto.builder()
+                .status(project.getStatus())
+                .statusDisplay(project.getStatus().getDisplayName())
+                .build();
+    }
+
+    /**
+     * 프로젝트의 의견 수집 상태를 조회합니다.
+     *
+     * @param email 사용자 이메일 주소
+     * @param projectId 프로젝트 고유 ID
+     * @return OpinionStatusResponseDto
+     */
+    public OpinionStatusResponseDto getOpinionStatus(String email, Long projectId) {
+        Project project = getProjectEntity(email, projectId);
+        OpinionCollectionStatus status = project.getOpinionCollectionStatus();
+
+        if(status == null) {
+            status = OpinionCollectionStatus.NOT_STARTED;
+        }
+
+        String statusDisplay = status.getDisplayName();
+
+        return OpinionStatusResponseDto.builder()
+                .status(status)
+                .statusDisplay(statusDisplay)
+                .build();
+    }
+
+    /**
+     * 파일을 업로드하여 새 작업(프로젝트)을 생성합니다.
+     * 분석과 리포트 결과가 담길 레코드를 함께 생성합니다.
+     *
+     * @param email 사용자 이메일 주소
+     * @param file 업로드할 파일
+     * @return 프로젝트 기본 정보, 파일 정보, 리포트 ID
+     */
+    @Transactional
+    public ProjectResponseDto createProject(String email, MultipartFile file) {
+        User user = GET_USER_BY_EMAIL(email);
+        String originalFilename = file.getOriginalFilename();
+        InputType type = resolveInputType(originalFilename);
+        Integer videoSeconds = type == InputType.MP4 ? readVideoSeconds(file) : null;
+        int price = FileAnalysisPrice.of(videoSeconds);
+
+        validateEnoughCredit(email, price);
+
+        String key = s3Service.upload(file);
+
+        Project project = projectRepository.save(Project.builder()
+                .user(user)
+                .title(removeExtension(originalFilename))
+                .status(ProjectStatus.IN_PROGRESS)
+                .build());
+
+        fileRepository.save(File.builder()
+                .project(project)
+                .type(type)
+                .url(key)
+                .name(originalFilename)
+                .size(Math.toIntExact(file.getSize()))
+                .build());
+
+        analysisRepository.save(Analysis.builder()
+                .project(project)
+                .status(AnalysisStatus.IN_PROGRESS)
+                .build());
+
+        reportRepository.save(Report.builder()
+                .project(project)
+                .build());
+
+        useCredit(email, project, price);
+
+        //커밋이 끝난 뒤 분석이 시작되도록 이벤트만 발행한다. 실제 실행은 ProjectCreatedEventListener가 한다.
+        eventPublisher.publishEvent(new ProjectCreatedEvent(project.getId()));
+
+        log.info("[createProject] 새 작업 생성: projectId={}, email={}", project.getId(), email);
+
+        return getProject(email, project.getId());
+    }
+
+    /**
+     * 프로젝트와 딸린 파일, 분석, 의견, 리포트를 삭제합니다.
+     * AI 사용량 기록은 남기고, S3 파일은 DB 삭제가 커밋된 뒤에 지웁니다.
+     *
+     * @param email 사용자 이메일 주소
+     * @param projectId 프로젝트 ID
+     */
+    @Transactional
+    public void deleteProject(String email, Long projectId) {
+        Project project = projectRepository.findWithLockByIdAndUserEmail(projectId, email)
+                .orElseThrow(() -> {
+                    log.warn("[deleteProject] 프로젝트 조회 실패: projectId={}, email={}", projectId, email);
+                    return new ProjectNotFoundException();
+                });
+        Optional<File> file = fileRepository.findByProjectId(projectId);
+
+        List<String> fileKeys = file
+                .map(f -> Stream.of(f.getUrl(), f.getThumbnailUrl())
+                        .filter(StringUtils::hasText)
+                        .distinct()
+                        .toList())
+                .orElse(List.of());
+
+        opinionRepository.deleteAll(opinionRepository.findAllByProjectIdWithDetails(projectId));
+        reportRepository.findByProjectId(projectId).ifPresent(reportRepository::delete);
+        analysisRepository.findByProjectId(projectId).ifPresent(analysisRepository::delete);
+        file.ifPresent(fileRepository::delete);
+        project.delete();
+
+        eventPublisher.publishEvent(new ProjectDeletedEvent(projectId, fileKeys));
+
+        log.info("[deleteProject] 프로젝트 삭제: projectId={}, email={}", projectId, email);
+    }
+
+    /**
+     * 파일명에서 확장자를 제외한 이름을 반환합니다.
+     *
+     * @param originalFilename 원본 파일명
+     * @return 확장자를 제외한 파일명
+     */
+    private String removeExtension(String originalFilename) {
+        int dot = originalFilename.lastIndexOf('.');
+        return dot > 0 ? originalFilename.substring(0, dot) : originalFilename;
+    }
+
+    /**
+     * 파일명의 확장자로 파일 형식을 판별합니다.
+     *
+     * @param originalFilename 원본 파일명
+     * @return 파일 형식
+     */
+    private InputType resolveInputType(String originalFilename) {
+        String extension = originalFilename.substring(originalFilename.lastIndexOf('.') + 1);
+        return InputType.valueOf(extension.toUpperCase());
+    }
+
+
+    //영상은 길이에 따라 요금이 달라 업로드 시점에 길이를 읽는다. 길이를 모르면 요금을 정할 수 없어 받지 않는다.
+    private Integer readVideoSeconds(MultipartFile file) {
+        Integer seconds;
+
+        try (InputStream stream = file.getInputStream()) {
+            seconds = videoDurationReader.readSeconds(stream);
+        } catch (IOException e) {
+            log.warn("[readVideoSeconds] 영상을 읽지 못했습니다: name={}", file.getOriginalFilename());
+            throw new VideoNotSupportedException("영상을 읽지 못했습니다. 다른 파일로 올려주세요.");
+        }
+
+        if (seconds == null) {
+            log.warn("[readVideoSeconds] 영상 길이를 확인하지 못했습니다: name={}", file.getOriginalFilename());
+            throw new VideoNotSupportedException("영상 길이를 확인할 수 없습니다. 다른 파일로 올려주세요.");
+        }
+
+        if (seconds > FileAnalysisPrice.MAX_VIDEO_SECONDS) {
+            log.warn("[readVideoSeconds] 30분을 넘는 영상입니다: name={}, {}초", file.getOriginalFilename(), seconds);
+            throw new VideoNotSupportedException("영상은 30분을 넘을 수 없습니다.");
+        }
+
+        return seconds;
+    }
+
+    //파일을 올리기 전에 먼저 본다. 100MB를 다 올린 뒤 잔액 부족으로 거절하지 않기 위해서다.
+    private void validateEnoughCredit(String email, int price) {
+        int amount = creditRepository.findByUserEmail(email)
+                .map(Credit::getAmount)
+                .orElse(0);
+
+        if (amount < price) {
+            log.warn("[validateEnoughCredit] 크레딧 부족: email={}, 필요 {}, 보유 {}", email, price, amount);
+            throw new InsufficientCreditException();
+        }
+    }
+
+    private void useCredit(String email, Project project, int price) {
+        Credit credit = creditRepository.findWithLockByUserEmail(email)
+                .orElseThrow(() -> {
+                    log.warn("[useCredit] 크레딧 정보가 없습니다: projectId={}, email={}", project.getId(), email);
+                    return new InsufficientCreditException();
+                });
+
+        FileAnalysisCredit fileAnalysisCredit = FileAnalysisCredit.builder().build();
+        fileAnalysisCredit.use(credit, project, price);
+        fileAnalysisCreditRepository.save(fileAnalysisCredit);
+
+        log.info("[useCredit] 새 작업 크레딧 차감: projectId={}, 차감 {}, 잔액 {}",
+                project.getId(), price, credit.getAmount());
+    }
+}

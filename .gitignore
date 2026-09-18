@@ -35,3 +35,10 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Claude Code ###
+.omc/
+
+### 배포 ###
+.env
+*.pem

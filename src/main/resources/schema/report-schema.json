@@ -1,0 +1,94 @@
+{
+  "type": "object",
+  "propertyOrdering": [
+    "summary",
+    "insight",
+    "positivePoints",
+    "negativePoints",
+    "ageInsights"
+  ],
+  "required": [
+    "summary",
+    "insight",
+    "positivePoints",
+    "negativePoints",
+    "ageInsights"
+  ],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "이 자료가 사람들에게 어떻게 받아들여졌는지 전체를 아우르는 요약. 한국어 200자 안팎. 점수나 인원수를 쓰지 않는다."
+    },
+    "insight": {
+      "type": "string",
+      "description": "연령대에 따라 반응이 어떻게 갈렸는지 한 문장. 한국어 80자 이내."
+    },
+    "positivePoints": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "description": "여러 사람이 좋게 본 지점 세 가지. 서로 다른 이야기여야 하며, 표현만 바꿔 반복하지 않는다.",
+      "items": {
+        "type": "string",
+        "description": "좋게 본 지점 한 줄. 한국어 60자 안팎."
+      }
+    },
+    "negativePoints": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "description": "여러 사람이 걸린다고 한 지점 세 가지. 서로 다른 이야기여야 한다.",
+      "items": {
+        "type": "string",
+        "description": "걸린다고 한 지점 한 줄. 한국어 60자 안팎."
+      }
+    },
+    "ageInsights": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "description": "연령대별 정리. 여섯 연령대를 하나씩, 10대부터 60대 순서로 빠짐없이 쓴다.",
+      "items": {
+        "type": "object",
+        "propertyOrdering": [
+          "ageGroup",
+          "keyPoint",
+          "painPoint",
+          "improvement"
+        ],
+        "required": [
+          "ageGroup",
+          "keyPoint",
+          "painPoint",
+          "improvement"
+        ],
+        "properties": {
+          "ageGroup": {
+            "type": "string",
+            "enum": [
+              "TEENS",
+              "TWENTIES",
+              "THIRTIES",
+              "FORTIES",
+              "FIFTIES",
+              "SIXTIES"
+            ],
+            "description": "연령대. TEENS는 10대, TWENTIES는 20대, THIRTIES는 30대, FORTIES는 40대, FIFTIES는 50대, SIXTIES는 60대. 여섯 개가 각각 한 번씩 나와야 한다."
+          },
+          "keyPoint": {
+            "type": "string",
+            "description": "이 연령대가 가장 주목한 지점 한 줄. 한국어 60자 안팎."
+          },
+          "painPoint": {
+            "type": "string",
+            "description": "이 연령대가 불편하다고 한 지점 한 줄. 한국어 60자 안팎."
+          },
+          "improvement": {
+            "type": "string",
+            "description": "이 연령대의 의견에서 나온 개선 요청 한 줄. 기획자가 무엇을 바꿔야 할지 알 수 있게 쓴다. 한국어 60자 안팎."
+          }
+        }
+      }
+    }
+  }
+}

@@ -4,6 +4,12 @@ import kr.yuns.dropthepitchserver.common.response.GlobalResponse;
 import kr.yuns.dropthepitchserver.common.security.AuthenticationToken;
 import kr.yuns.dropthepitchserver.common.security.JwtTokenProvider;
 import kr.yuns.dropthepitchserver.common.security.exception.TokenInvalidException;
+import kr.yuns.dropthepitchserver.credit.data.entity.Credit;
+import kr.yuns.dropthepitchserver.credit.data.repository.CreditRepository;
+import kr.yuns.dropthepitchserver.payment.data.entity.Payment;
+import kr.yuns.dropthepitchserver.payment.data.enums.PaymentReason;
+import kr.yuns.dropthepitchserver.payment.data.repository.PaymentRepository;
+import kr.yuns.dropthepitchserver.user.data.dto.request.RefreshRequestDto;
 import kr.yuns.dropthepitchserver.user.data.dto.request.SignInRequestDto;
 import kr.yuns.dropthepitchserver.user.data.dto.request.SignUpRequestDto;
 import kr.yuns.dropthepitchserver.user.data.dto.response.TokenResponseDto;
@@ -32,6 +38,10 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
+    private final CreditRepository creditRepository;
+    private final PaymentRepository paymentRepository;
+
+    private static final int SIGNUP_BONUS_CREDIT = 70;
 
     @Transactional(readOnly = true)
     public User getUserEntity(String email) {
@@ -75,14 +85,29 @@ public class AuthService {
             throw new EmailDuplicationException();
         }
 
+        grantSignUpBonus(user);
+
         Authentication authentication = createAuthentication(user);
         AuthenticationToken authenticationToken = tokenProvider.generateToken(authentication);
 
         return GlobalResponse.ok(
                 TokenResponseDto.builder()
+                        .name(user.getName())
                         .accessToken(authenticationToken.getAccessToken())
                         .refreshToken(authenticationToken.getRefreshToken())
                         .build());
+    }
+
+    private void grantSignUpBonus(User user) {
+        Credit credit = creditRepository.save(Credit.builder()
+                .user(user)
+                .build());
+
+        Payment payment = Payment.builder().build();
+        payment.addAmount(credit, SIGNUP_BONUS_CREDIT, PaymentReason.SIGNUP_BONUS);
+        paymentRepository.save(payment);
+
+        log.info("[grantSignUpBonus] 가입 크레딧 지급: {}, 지급 {}", user.getEmail(), SIGNUP_BONUS_CREDIT);
     }
 
     public GlobalResponse<TokenResponseDto> signIn(SignInRequestDto signInRequestDto) {
@@ -94,6 +119,49 @@ public class AuthService {
 
         return GlobalResponse.ok(
                 TokenResponseDto.builder()
+                        .name(user.getName())
+                        .accessToken(authenticationToken.getAccessToken())
+                        .refreshToken(authenticationToken.getRefreshToken())
+                        .build());
+    }
+
+    public GlobalResponse<TokenResponseDto> refresh(String bearerToken, RefreshRequestDto refreshRequestDto) {
+        String accessToken = tokenProvider.resolveToken(bearerToken);
+        String refreshToken = refreshRequestDto.getRefreshToken();
+
+        if (accessToken == null || !tokenProvider.validateTokenAllowExpired(accessToken)) {
+            log.error("[refresh] 유효하지 않은 Access Token으로 재발급 시도");
+            throw new TokenInvalidException();
+        }
+
+        if (!tokenProvider.validateToken(refreshToken)) {
+            log.error("[refresh] 유효하지 않은 Refresh Token으로 재발급 시도");
+            throw new TokenInvalidException();
+        }
+
+        String email = tokenProvider.getSubject(refreshToken);
+
+        if (!email.equals(tokenProvider.getSubject(accessToken))) {
+            log.error("[refresh] 소유자가 일치하지 않는 토큰으로 재발급 시도: {}", email);
+            throw new TokenInvalidException();
+        }
+
+        if (!tokenProvider.isStoredRefreshToken(email, refreshToken)) {
+            log.error("[refresh] 저장된 Refresh Token과 일치하지 않는 재발급 시도: {}", email);
+            throw new TokenInvalidException();
+        }
+
+        User user = getUserEntity(email);
+        Authentication authentication = createAuthentication(user);
+
+        tokenProvider.blacklistAccessToken(accessToken);
+        tokenProvider.blacklistRefreshToken(refreshToken);
+        AuthenticationToken authenticationToken = tokenProvider.generateToken(authentication);
+        log.info("[refresh] 토큰 재발급 완료: {}", email);
+
+        return GlobalResponse.ok(
+                TokenResponseDto.builder()
+                        .name(user.getName())
                         .accessToken(authenticationToken.getAccessToken())
                         .refreshToken(authenticationToken.getRefreshToken())
                         .build());
