@@ -4,6 +4,9 @@ services:
     container_name: dropthepitch-app
     env_file: .env
     mem_limit: 850m
+    depends_on:
+      mariadb:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health || exit 1"]
@@ -11,6 +14,28 @@ services:
       timeout: 5s
       retries: 10
       start_period: 60s
+
+  mariadb:
+    image: mariadb:11.4
+    container_name: dropthepitch-db
+    mem_limit: 400m
+    command: ["--innodb-buffer-pool-size=128M"]
+    ports:
+      - "127.0.0.1:3306:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USERNAME}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Seoul
+    volumes:
+      - db-data:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   nginx:
     image: nginx:1.27-alpine
@@ -36,5 +61,6 @@ services:
     restart: unless-stopped
 
 volumes:
+  db-data:
   certbot-www:
   certbot-conf:
