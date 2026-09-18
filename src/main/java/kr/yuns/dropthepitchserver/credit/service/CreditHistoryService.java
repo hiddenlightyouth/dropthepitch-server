@@ -1,5 +1,6 @@
 package kr.yuns.dropthepitchserver.credit.service;
 
+import kr.yuns.dropthepitchserver.credit.data.dto.projection.CreditUseView;
 import kr.yuns.dropthepitchserver.credit.data.dto.response.CreditHistoryPageResponseDto;
 import kr.yuns.dropthepitchserver.credit.data.dto.response.CreditHistoryResponseDto;
 import kr.yuns.dropthepitchserver.credit.data.entity.Credit;
@@ -9,7 +10,6 @@ import kr.yuns.dropthepitchserver.credit.data.repository.CreditRepository;
 import kr.yuns.dropthepitchserver.credit.data.repository.FileAnalysisCreditRepository;
 import kr.yuns.dropthepitchserver.credit.data.repository.OpinionRequestCreditRepository;
 import kr.yuns.dropthepitchserver.payment.data.repository.PaymentRepository;
-import kr.yuns.dropthepitchserver.project.data.entity.Project;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,12 +31,13 @@ public class CreditHistoryService {
     private final OpinionRequestCreditRepository opinionRequestCreditRepository;
     private final PaymentRepository paymentRepository;
 
-    //잔액을 계산하기 전 단계
+    //세 테이블에 흩어진 변동 내역을 한 줄로 맞춰 담는다.
     private record CreditChange(
             CreditHistoryType type,
             int amount,
             Long projectId,
             String projectTitle,
+            boolean projectDeleted,
             LocalDateTime occurredAt
     ) { }
 
@@ -54,17 +55,16 @@ public class CreditHistoryService {
             return toPage(List.of(), page, size);
         }
 
-        List<CreditHistoryResponseDto> history = fillBalance(credit, collectChanges(credit.getId()));
-
-        //잔액을 다 채운 뒤에 거름. 먼저 거르면 빠진 거래만큼 잔액이 어긋나는 현상 발생.
-        List<CreditHistoryResponseDto> filtered = history.stream()
-                .filter(item -> category == null || item.category() == category)
+        List<CreditHistoryResponseDto> history = collectChanges(credit.getId()).stream()
+                .sorted(Comparator.comparing(CreditChange::occurredAt).reversed())
+                .filter(change -> category == null || change.type().getCategory() == category)
+                .map(this::toResponse)
                 .toList();
 
         log.info("[getHistory] 크레딧 내역 조회: email={}, 전체 {}건, category={}, page={}",
-                email, filtered.size(), category, page);
+                email, history.size(), category, page);
 
-        return toPage(filtered, page, size);
+        return toPage(history, page, size);
     }
 
     //세 테이블을 시간순으로 합쳐야 해서 전부 읽은 뒤 자른다. 조회량이 문제가 되면 UNION 쿼리로 옮기는게 좋아보임
@@ -90,54 +90,43 @@ public class CreditHistoryService {
     private List<CreditChange> collectChanges(Long creditId) {
         List<CreditChange> changes = new ArrayList<>();
 
-        fileAnalysisCreditRepository.findAllByCreditIdWithProject(creditId).forEach(used ->
-                changes.add(toUsedChange(CreditHistoryType.FILE_ANALYSIS,
-                        used.getUseCredit(), used.getProject(), used.getCreatedAt())));
+        fileAnalysisCreditRepository.findAllUsedByCreditId(creditId).forEach(used ->
+                changes.add(toUsedChange(CreditHistoryType.FILE_ANALYSIS, used)));
 
-        opinionRequestCreditRepository.findAllByCreditIdWithProject(creditId).forEach(used ->
-                changes.add(toUsedChange(CreditHistoryType.OPINION_COLLECTION,
-                        used.getUseCredit(), used.getProject(), used.getCreatedAt())));
+        opinionRequestCreditRepository.findAllUsedByCreditId(creditId).forEach(used ->
+                changes.add(toUsedChange(CreditHistoryType.OPINION_COLLECTION, used)));
 
+        //충전과 적립은 프로젝트와 무관하다.
         paymentRepository.findAllByCreditId(creditId).forEach(payment ->
                 changes.add(new CreditChange(
                         CreditHistoryType.from(payment.getReason()),
                         payment.getAmount(),
-                        null, null,
+                        null, null, false,
                         payment.getCreatedAt())));
 
         return changes;
     }
 
     //쓴 크레딧은 음수로
-    private CreditChange toUsedChange(CreditHistoryType type, int useCredit,
-                                      Project project, LocalDateTime occurredAt) {
-        return new CreditChange(type, -useCredit, project.getId(), project.getTitle(), occurredAt);
+    private CreditChange toUsedChange(CreditHistoryType type, CreditUseView used) {
+        return new CreditChange(
+                type,
+                -used.getUseCredit(),
+                used.getProjectId(),
+                used.getProjectTitle(),
+                used.getProjectDeletedAt() != null,
+                used.getOccurredAt());
     }
 
-    //거래 직후 잔액은 저장 X. 현재 잔액에서 최신 거래부터 거꾸로 되짚어 채움.
-    private List<CreditHistoryResponseDto> fillBalance(Credit credit, List<CreditChange> changes) {
-        List<CreditHistoryResponseDto> history = new ArrayList<>();
-        int running = credit.getAmount();
-
-        for (CreditChange change : changes.stream()
-                .sorted(Comparator.comparing(CreditChange::occurredAt).reversed())
-                .toList()) {
-            history.add(toResponse(change, running));
-            running -= change.amount();
-        }
-
-        return history;
-    }
-
-    private CreditHistoryResponseDto toResponse(CreditChange change, int balance) {
+    private CreditHistoryResponseDto toResponse(CreditChange change) {
         return CreditHistoryResponseDto.builder()
                 .type(change.type())
                 .typeDisplay(change.type().getDisplayName())
                 .category(change.type().getCategory())
                 .amount(change.amount())
-                .balance(balance)
                 .projectId(change.projectId())
                 .projectTitle(change.projectTitle())
+                .projectDeleted(change.projectDeleted())
                 .occurredAt(change.occurredAt())
                 .build();
     }

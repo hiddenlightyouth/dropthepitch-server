@@ -14,11 +14,11 @@ public record CreditHistoryResponseDto(
         CreditHistoryCategory category,
         //사용은 음수, 충전과 적립은 양수
         Integer amount,
-        //이 거래 직후의 잔액. 현재 잔액에서 거꾸로 계산한 값이
-        Integer balance,
         //어떤 작업에 썼는지
         Long projectId,
         String projectTitle,
+        //지운 프로젝트의 내역 여부
+        boolean projectDeleted,
         //거래가 일어난 시각
         LocalDateTime occurredAt
 ) { }
