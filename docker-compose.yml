@@ -20,6 +20,8 @@ services:
     container_name: dropthepitch-db
     mem_limit: 400m
     command: ["--innodb-buffer-pool-size=128M"]
+    ports:
+      - "127.0.0.1:3306:3306"
     environment:
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MARIADB_DATABASE: ${DB_NAME}
