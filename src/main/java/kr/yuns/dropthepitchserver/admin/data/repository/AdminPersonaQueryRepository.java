@@ -5,10 +5,12 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Tuple;
 import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminPersonaSearchRequestDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminPageResponseDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminPersonaDetailResponseDto.Usage;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminPersonaResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.enums.AdminPersonaSort;
 import kr.yuns.dropthepitchserver.admin.data.repository.support.AdminConditions;
 import kr.yuns.dropthepitchserver.admin.data.repository.support.AdminRows;
+import kr.yuns.dropthepitchserver.opinion.data.enums.Sentiment;
 import kr.yuns.dropthepitchserver.persona.data.enums.Gender;
 import kr.yuns.dropthepitchserver.report.data.enums.AgeGroup;
 import org.springframework.stereotype.Repository;
@@ -18,6 +20,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Repository
 public class AdminPersonaQueryRepository {
@@ -94,6 +97,13 @@ public class AdminPersonaQueryRepository {
         return AdminPageResponseDto.of(attachTags(items), request.getPage(), request.getSize(), totalCount);
     }
 
+    public Optional<AdminPersonaResponseDto> findSummary(Long personaId) {
+        AdminConditions conditions = new AdminConditions().add(personaId, "p.id = :personaId", "personaId");
+        List<AdminPersonaResponseDto> found = AdminRows.list(entityManager,
+                SELECT + FROM + conditions.where(), conditions, this::toSummary);
+        return attachTags(found).stream().findFirst();
+    }
+
     public List<String> findTagNames() {
         return AdminRows.list(entityManager, "select distinct t.name as name from persona_tag t",
                         new AdminConditions(), row -> AdminRows.asString(row, "name"))
@@ -102,6 +112,25 @@ public class AdminPersonaQueryRepository {
                 .distinct()
                 .sorted()
                 .toList();
+    }
+
+    public List<Usage> findRecentUsages(Long personaId, int limit) {
+        AdminConditions conditions = new AdminConditions().param("personaId", personaId);
+        String sql = """
+                select pr.id as project_id, pr.title as project_title, pr.deleted_at as deleted_at,
+                       o.score as score, o.sentiment as sentiment, pr.created_at as used_at
+                  from opinion o
+                  join project pr on pr.id = o.project_id
+                 where o.persona_id = :personaId
+                 order by pr.created_at desc, pr.id desc
+                """;
+        return AdminRows.page(entityManager, sql, conditions, 0, limit, row -> new Usage(
+                AdminRows.asLong(row, "project_id"),
+                AdminRows.asString(row, "project_title"),
+                AdminRows.asDateTime(row, "deleted_at") != null,
+                AdminRows.asDouble(row, "score"),
+                AdminRows.asEnum(row, "sentiment", Sentiment.class),
+                AdminRows.asDateTime(row, "used_at")));
     }
 
     private List<AdminPersonaResponseDto> attachTags(List<AdminPersonaResponseDto> personas) {
