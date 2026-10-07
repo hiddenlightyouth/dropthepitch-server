@@ -3,6 +3,7 @@ package kr.yuns.dropthepitchserver.admin.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminAiUsageSearchRequestDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiDailyUsageResponseDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiModelUsageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiPurposeUsageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiUsageSummaryResponseDto;
 import kr.yuns.dropthepitchserver.admin.service.AdminAiUsageService;
@@ -42,5 +43,12 @@ public class AdminAiUsageController {
     public GlobalResponse<List<AdminAiPurposeUsageResponseDto>> getByPurpose(
             @ModelAttribute AdminAiUsageSearchRequestDto request) {
         return GlobalResponse.ok(adminAiUsageService.getByPurpose(request));
+    }
+
+    @GetMapping("/by-model")
+    @Operation(summary = "모델별 AI 사용량, 요율 조회", description = "모델별 합계와 100만 토큰당 요율(USD)을 돌려줍니다.")
+    public GlobalResponse<List<AdminAiModelUsageResponseDto>> getByModel(
+            @ModelAttribute AdminAiUsageSearchRequestDto request) {
+        return GlobalResponse.ok(adminAiUsageService.getByModel(request));
     }
 }

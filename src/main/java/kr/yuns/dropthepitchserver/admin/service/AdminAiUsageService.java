@@ -2,12 +2,14 @@ package kr.yuns.dropthepitchserver.admin.service;
 
 import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminAiUsageSearchRequestDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiDailyUsageResponseDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiModelUsageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiPurposeUsageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiUsageSummaryResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.repository.AdminAiUsageQueryRepository;
 import kr.yuns.dropthepitchserver.admin.data.repository.AdminAiUsageQueryRepository.ProjectPurposeUsage;
 import kr.yuns.dropthepitchserver.admin.data.repository.AdminAiUsageQueryRepository.Span;
 import kr.yuns.dropthepitchserver.admin.support.AiUsageSum;
+import kr.yuns.dropthepitchserver.admin.support.GeminiPricing;
 import kr.yuns.dropthepitchserver.ai.data.enums.AiPurpose;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -103,6 +105,27 @@ public class AdminAiUsageService {
         return adminAiUsageQueryRepository.sumByPurpose(request).entrySet().stream()
                 .map(entry -> AdminAiPurposeUsageResponseDto.of(entry.getKey(), entry.getValue()))
                 .sorted(Comparator.comparingDouble(AdminAiPurposeUsageResponseDto::totalCost).reversed())
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminAiModelUsageResponseDto> getByModel(AdminAiUsageSearchRequestDto request) {
+        return adminAiUsageQueryRepository.sumByModel(request).entrySet().stream()
+                .map(entry -> {
+                    String model = entry.getKey();
+                    AiUsageSum sum = entry.getValue();
+                    return AdminAiModelUsageResponseDto.builder()
+                            .model(model)
+                            .displayName(GeminiPricing.displayNameOf(model))
+                            .inputRate(GeminiPricing.rateOf(model).input())
+                            .outputRate(GeminiPricing.rateOf(model).output())
+                            .calls(sum.getCalls())
+                            .inputTokens(sum.getInputTokens())
+                            .outputTokens(sum.getOutputTokens())
+                            .totalCost(sum.getRoundedCost())
+                            .build();
+                })
+                .sorted(Comparator.comparingDouble(AdminAiModelUsageResponseDto::totalCost).reversed())
                 .toList();
     }
 }
