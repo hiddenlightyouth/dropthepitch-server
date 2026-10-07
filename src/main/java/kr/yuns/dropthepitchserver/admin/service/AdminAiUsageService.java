@@ -5,6 +5,7 @@ import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiDailyUsageRespo
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiModelUsageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiProjectUsageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiPurposeUsageResponseDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiUsageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiUsageSummaryResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminPageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.repository.AdminAiUsageQueryRepository;
@@ -165,6 +166,11 @@ public class AdminAiUsageService {
         log.info("[getByProject] 프로젝트별 AI 사용량 조회: 전체 {}건, page={}", sorted.size(), request.getPage());
 
         return AdminPageResponseDto.of(items, request.getPage(), request.getSize(), sorted.size());
+    }
+
+    @Transactional(readOnly = true)
+    public AdminPageResponseDto<AdminAiUsageResponseDto> getUsages(AdminAiUsageSearchRequestDto request) {
+        return adminAiUsageQueryRepository.search(request);
     }
 
     private ToDoubleFunction<ProjectUsage> sortKeyOf(String sort) {

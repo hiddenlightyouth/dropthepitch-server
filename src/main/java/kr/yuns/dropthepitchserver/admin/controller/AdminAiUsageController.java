@@ -6,6 +6,7 @@ import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiDailyUsageRespo
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiModelUsageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiProjectUsageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiPurposeUsageResponseDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiUsageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiUsageSummaryResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminPageResponseDto;
 import kr.yuns.dropthepitchserver.admin.service.AdminAiUsageService;
@@ -60,5 +61,12 @@ public class AdminAiUsageController {
     public GlobalResponse<AdminPageResponseDto<AdminAiProjectUsageResponseDto>> getByProject(
             @ModelAttribute AdminAiUsageSearchRequestDto request) {
         return GlobalResponse.ok(adminAiUsageService.getByProject(request));
+    }
+
+    @GetMapping
+    @Operation(summary = "AI 최근 요청 목록 조회", description = "호출 한 건씩 최근 것부터 돌려줍니다.")
+    public GlobalResponse<AdminPageResponseDto<AdminAiUsageResponseDto>> getUsages(
+            @ModelAttribute AdminAiUsageSearchRequestDto request) {
+        return GlobalResponse.ok(adminAiUsageService.getUsages(request));
     }
 }

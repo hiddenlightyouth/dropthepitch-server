@@ -4,9 +4,12 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Tuple;
 import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminAiUsageSearchRequestDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiUsageResponseDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminPageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.repository.support.AdminConditions;
 import kr.yuns.dropthepitchserver.admin.data.repository.support.AdminRows;
 import kr.yuns.dropthepitchserver.admin.support.AiUsageSum;
+import kr.yuns.dropthepitchserver.admin.support.GeminiPricing;
 import kr.yuns.dropthepitchserver.ai.data.enums.AiPurpose;
 import kr.yuns.dropthepitchserver.analyze.data.enums.InputType;
 import kr.yuns.dropthepitchserver.project.data.enums.ProjectStatus;
@@ -119,6 +122,24 @@ public class AdminAiUsageQueryRepository {
         return metas;
     }
 
+    public AdminPageResponseDto<AdminAiUsageResponseDto> search(AdminAiUsageSearchRequestDto request) {
+        AdminConditions conditions = conditionsOf(request);
+
+        long totalCount = AdminRows.number(entityManager,
+                "select count(*)" + FROM + conditions.where(), conditions);
+
+        String sql = """
+                select a.id as id, a.project_id as project_id, p.title as project_title, a.model as model,
+                       a.purpose as purpose, a.input_tokens as input_tokens, a.output_tokens as output_tokens,
+                       a.requested_at as requested_at
+                """ + FROM + conditions.where() + " order by a.requested_at desc, a.id desc";
+
+        List<AdminAiUsageResponseDto> items = AdminRows.page(entityManager, sql, conditions,
+                request.getPage(), request.getSize(), this::toUsage);
+
+        return AdminPageResponseDto.of(items, request.getPage(), request.getSize(), totalCount);
+    }
+
     private <K> Map<K, AiUsageSum> sumBy(AdminAiUsageSearchRequestDto request, String keyExpression,
                                          Function<Tuple, K> keyOf) {
         AdminConditions conditions = conditionsOf(request);
@@ -155,5 +176,23 @@ public class AdminAiUsageQueryRepository {
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private AdminAiUsageResponseDto toUsage(Tuple row) {
+        String model = AdminRows.asString(row, "model");
+        int inputTokens = AdminRows.asInt(row, "input_tokens");
+        int outputTokens = AdminRows.asInt(row, "output_tokens");
+        double cost = GeminiPricing.costOf(model, inputTokens, outputTokens);
+        return AdminAiUsageResponseDto.builder()
+                .id(AdminRows.asLong(row, "id"))
+                .projectId(AdminRows.asLong(row, "project_id"))
+                .projectTitle(AdminRows.asString(row, "project_title"))
+                .model(model)
+                .purpose(AdminRows.asEnum(row, "purpose", AiPurpose.class))
+                .inputTokens(inputTokens)
+                .outputTokens(outputTokens)
+                .totalCost(Math.round(cost * 1_000_000) / 1_000_000.0)
+                .requestedAt(AdminRows.asDateTime(row, "requested_at"))
+                .build();
     }
 }
