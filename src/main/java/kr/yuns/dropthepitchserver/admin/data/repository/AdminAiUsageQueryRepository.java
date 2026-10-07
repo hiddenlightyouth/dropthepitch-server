@@ -12,6 +12,7 @@ import kr.yuns.dropthepitchserver.analyze.data.enums.InputType;
 import kr.yuns.dropthepitchserver.project.data.enums.ProjectStatus;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -53,6 +54,10 @@ public class AdminAiUsageQueryRepository {
         sumBy(request, "a.model", row -> AdminRows.asString(row, "group_key")).values()
                 .forEach(total::merge);
         return total;
+    }
+
+    public Map<LocalDate, AiUsageSum> sumByDate(AdminAiUsageSearchRequestDto request) {
+        return sumBy(request, "cast(a.requested_at as date)", row -> AdminRows.asDate(row, "group_key"));
     }
 
     public Span findSpan(AdminAiUsageSearchRequestDto request) {

@@ -1,6 +1,7 @@
 package kr.yuns.dropthepitchserver.admin.service;
 
 import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminAiUsageSearchRequestDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiDailyUsageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiUsageSummaryResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.repository.AdminAiUsageQueryRepository;
 import kr.yuns.dropthepitchserver.admin.data.repository.AdminAiUsageQueryRepository.ProjectPurposeUsage;
@@ -12,14 +13,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class AdminAiUsageService {
+    private static final int MAX_DAILY_POINTS = 366;
+
     private final AdminAiUsageQueryRepository adminAiUsageQueryRepository;
 
     private static class ProjectUsage {
@@ -65,5 +72,28 @@ public class AdminAiUsageService {
                 .dateMin(span.dateMin())
                 .dateMax(span.dateMax())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminAiDailyUsageResponseDto> getDaily(AdminAiUsageSearchRequestDto request) {
+        Map<LocalDate, AiUsageSum> sums = adminAiUsageQueryRepository.sumByDate(request);
+
+        LocalDate today = LocalDate.now();
+        LocalDate to = request.getTo() != null ? request.getTo() : today;
+        LocalDate from = request.getFrom() != null ? request.getFrom()
+                : sums.keySet().stream().min(Comparator.naturalOrder()).orElse(to);
+
+        if (from.isAfter(to)) {
+            return List.of();
+        }
+        if (from.isBefore(to.minusDays(MAX_DAILY_POINTS - 1))) {
+            from = to.minusDays(MAX_DAILY_POINTS - 1);
+        }
+
+        List<AdminAiDailyUsageResponseDto> daily = new ArrayList<>();
+        for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) {
+            daily.add(AdminAiDailyUsageResponseDto.of(date, sums.getOrDefault(date, new AiUsageSum())));
+        }
+        return daily;
     }
 }
