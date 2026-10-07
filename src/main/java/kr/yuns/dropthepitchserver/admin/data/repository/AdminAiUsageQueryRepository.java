@@ -15,7 +15,9 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -76,6 +78,45 @@ public class AdminAiUsageQueryRepository {
                 AdminRows.asLongOrZero(row, "projects"),
                 AdminRows.asDateTime(row, "date_min"),
                 AdminRows.asDateTime(row, "date_max"))).getFirst();
+    }
+
+    public List<ProjectPurposeUsage> findProjectUsages(AdminAiUsageSearchRequestDto request) {
+        AdminConditions conditions = conditionsOf(request);
+        String sql = "select a.project_id as project_id, a.purpose as purpose" + SUMS + FROM
+                + conditions.where() + " group by a.project_id, a.purpose, a.model";
+        return AdminRows.list(entityManager, sql, conditions, row -> new ProjectPurposeUsage(
+                AdminRows.asLong(row, "project_id"),
+                AdminRows.asEnum(row, "purpose", AiPurpose.class),
+                AdminRows.asString(row, "model"),
+                AdminRows.asLongOrZero(row, "calls"),
+                AdminRows.asLongOrZero(row, "input_tokens"),
+                AdminRows.asLongOrZero(row, "output_tokens"),
+                AdminRows.asDateTime(row, "last_used_at")));
+    }
+
+    public Map<Long, ProjectMeta> findProjectMetas(Collection<Long> projectIds) {
+        Map<Long, ProjectMeta> metas = new LinkedHashMap<>();
+        if (projectIds.isEmpty()) {
+            return metas;
+        }
+
+        AdminConditions conditions = new AdminConditions().in(projectIds, "p.id", "projectIds");
+        String sql = """
+                select p.id as id, p.title as title, p.status as status, p.deleted_at as deleted_at,
+                       f.name as file_name, f.type as file_type, f.size as file_size
+                  from project p
+                  left join file f on f.project_id = p.id
+                """ + conditions.where();
+
+        AdminRows.list(entityManager, sql, conditions, row -> new ProjectMeta(
+                AdminRows.asLong(row, "id"),
+                AdminRows.asString(row, "title"),
+                AdminRows.asEnum(row, "status", ProjectStatus.class),
+                AdminRows.asDateTime(row, "deleted_at") != null,
+                AdminRows.asString(row, "file_name"),
+                AdminRows.asEnum(row, "file_type", InputType.class),
+                AdminRows.asLong(row, "file_size"))).forEach(meta -> metas.put(meta.projectId(), meta));
+        return metas;
     }
 
     private <K> Map<K, AiUsageSum> sumBy(AdminAiUsageSearchRequestDto request, String keyExpression,

@@ -4,8 +4,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminAiUsageSearchRequestDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiDailyUsageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiModelUsageResponseDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiProjectUsageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiPurposeUsageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiUsageSummaryResponseDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminPageResponseDto;
 import kr.yuns.dropthepitchserver.admin.service.AdminAiUsageService;
 import kr.yuns.dropthepitchserver.common.response.GlobalResponse;
 import lombok.RequiredArgsConstructor;
@@ -50,5 +52,13 @@ public class AdminAiUsageController {
     public GlobalResponse<List<AdminAiModelUsageResponseDto>> getByModel(
             @ModelAttribute AdminAiUsageSearchRequestDto request) {
         return GlobalResponse.ok(adminAiUsageService.getByModel(request));
+    }
+
+    @GetMapping("/by-project")
+    @Operation(summary = "프로젝트별 AI 사용량 조회",
+            description = "프로젝트마다 용도별 내역을 함께 돌려줍니다. 비용, 토큰, 호출 수, 최근 사용, 용도별 토큰으로 정렬할 수 있습니다.")
+    public GlobalResponse<AdminPageResponseDto<AdminAiProjectUsageResponseDto>> getByProject(
+            @ModelAttribute AdminAiUsageSearchRequestDto request) {
+        return GlobalResponse.ok(adminAiUsageService.getByProject(request));
     }
 }
