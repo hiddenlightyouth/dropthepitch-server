@@ -3,12 +3,14 @@ package kr.yuns.dropthepitchserver.admin.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminProjectSearchRequestDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminPageResponseDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminProjectDetailResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminProjectResponseDto;
 import kr.yuns.dropthepitchserver.admin.service.AdminProjectService;
 import kr.yuns.dropthepitchserver.common.response.GlobalResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -24,5 +26,12 @@ public class AdminProjectController {
     public GlobalResponse<AdminPageResponseDto<AdminProjectResponseDto>> getProjects(
             @ModelAttribute AdminProjectSearchRequestDto request) {
         return GlobalResponse.ok(adminProjectService.getProjects(request));
+    }
+
+    @GetMapping("/{projectId}")
+    @Operation(summary = "프로젝트 상세 조회",
+            description = "업로드 파일, 파일 분석 결과, 페르소나 의견, 리포트, 용도별 AI 사용량을 함께 돌려줍니다. 삭제된 프로젝트도 조회됩니다.")
+    public GlobalResponse<AdminProjectDetailResponseDto> getProject(@PathVariable Long projectId) {
+        return GlobalResponse.ok(adminProjectService.getProject(projectId));
     }
 }

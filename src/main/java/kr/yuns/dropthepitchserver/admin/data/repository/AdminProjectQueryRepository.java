@@ -4,17 +4,37 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Tuple;
 import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminProjectSearchRequestDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiPurposeUsageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminPageResponseDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminProjectDetailResponseDto.AnalysisInfo;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminProjectDetailResponseDto.FileInfo;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminProjectDetailResponseDto.OpinionInfo;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminProjectDetailResponseDto.ReportInfo;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminProjectDetailResponseDto.ReportItemInfo;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminProjectResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.enums.AdminProjectSort;
 import kr.yuns.dropthepitchserver.admin.data.repository.support.AdminConditions;
 import kr.yuns.dropthepitchserver.admin.data.repository.support.AdminRows;
+import kr.yuns.dropthepitchserver.admin.support.AiUsageSum;
+import kr.yuns.dropthepitchserver.ai.data.enums.AiPurpose;
+import kr.yuns.dropthepitchserver.analyze.data.enums.AnalysisStatus;
+import kr.yuns.dropthepitchserver.analyze.data.enums.AnalysisVerdict;
 import kr.yuns.dropthepitchserver.analyze.data.enums.InputType;
+import kr.yuns.dropthepitchserver.opinion.data.enums.Sentiment;
+import kr.yuns.dropthepitchserver.persona.data.enums.Gender;
 import kr.yuns.dropthepitchserver.project.data.enums.OpinionCollectionStatus;
 import kr.yuns.dropthepitchserver.project.data.enums.ProjectStatus;
+import kr.yuns.dropthepitchserver.report.data.enums.AgeGroup;
+import kr.yuns.dropthepitchserver.report.data.enums.ReportItemType;
+import kr.yuns.dropthepitchserver.report.data.enums.ReportStatus;
 import org.springframework.stereotype.Repository;
 
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Repository
 public class AdminProjectQueryRepository {
@@ -79,6 +99,114 @@ public class AdminProjectQueryRepository {
                 request.getPage(), request.getSize(), this::toSummary);
 
         return AdminPageResponseDto.of(items, request.getPage(), request.getSize(), totalCount);
+    }
+
+    public Optional<AdminProjectResponseDto> findSummary(Long projectId) {
+        AdminConditions conditions = new AdminConditions().add(projectId, "p.id = :projectId", "projectId");
+        return AdminRows.list(entityManager, SELECT + FROM + conditions.where(), conditions, this::toSummary)
+                .stream().findFirst();
+    }
+
+    public Optional<FileInfo> findFile(Long projectId) {
+        AdminConditions conditions = byProject(projectId);
+        String sql = "select f.name as name, f.type as type, f.size as size, f.url as url,"
+                + " f.thumbnail_url as thumbnail_url from file f where f.project_id = :projectId";
+        return AdminRows.list(entityManager, sql, conditions, row -> new FileInfo(
+                AdminRows.asString(row, "name"),
+                AdminRows.asEnum(row, "type", InputType.class),
+                AdminRows.asLongOrZero(row, "size"),
+                AdminRows.asString(row, "url"),
+                AdminRows.asString(row, "thumbnail_url"))).stream().findFirst();
+    }
+
+    public Optional<AnalysisInfo> findAnalysis(Long projectId) {
+        AdminConditions conditions = byProject(projectId);
+        String sql = "select a.uuid as uuid, a.status as status, a.reject_reason as reject_reason,"
+                + " a.content as content, a.selected_tags as selected_tags from analysis a where a.project_id = :projectId";
+        return AdminRows.list(entityManager, sql, conditions, row -> new AnalysisInfo(
+                AdminRows.asString(row, "uuid"),
+                AdminRows.asEnum(row, "status", AnalysisStatus.class),
+                AdminRows.asEnum(row, "reject_reason", AnalysisVerdict.class),
+                AdminRows.asString(row, "content"),
+                splitTags(AdminRows.asString(row, "selected_tags")))).stream().findFirst();
+    }
+
+    public List<OpinionInfo> findOpinions(Long projectId) {
+        AdminConditions conditions = byProject(projectId);
+        String sql = """
+                select o.uuid as uuid, o.persona_id as persona_id, pe.name as persona_name, pe.age as persona_age,
+                       pe.gender as persona_gender, o.score as score, o.sentiment as sentiment, o.summary as summary
+                  from opinion o
+                  join persona pe on pe.id = o.persona_id
+                 where o.project_id = :projectId
+                 order by pe.age, pe.id
+                """;
+        return AdminRows.list(entityManager, sql, conditions, row -> new OpinionInfo(
+                AdminRows.asString(row, "uuid"),
+                AdminRows.asLong(row, "persona_id"),
+                AdminRows.asString(row, "persona_name"),
+                AdminRows.asInt(row, "persona_age"),
+                AdminRows.asEnum(row, "persona_gender", Gender.class),
+                AdminRows.asDouble(row, "score"),
+                AdminRows.asEnum(row, "sentiment", Sentiment.class),
+                AdminRows.asString(row, "summary")));
+    }
+
+    public Optional<ReportInfo> findReport(Long projectId) {
+        AdminConditions conditions = byProject(projectId);
+        String sql = "select r.id as id, r.uuid as uuid, r.status as status, r.summary as summary,"
+                + " r.insight as insight from report r where r.project_id = :projectId";
+        return AdminRows.list(entityManager, sql, conditions, row -> new ReportInfo(
+                AdminRows.asString(row, "uuid"),
+                AdminRows.asEnum(row, "status", ReportStatus.class),
+                AdminRows.asString(row, "summary"),
+                AdminRows.asString(row, "insight"),
+                findReportItems(AdminRows.asLong(row, "id")))).stream().findFirst();
+    }
+
+    private List<ReportItemInfo> findReportItems(Long reportId) {
+        AdminConditions conditions = new AdminConditions().add(reportId, "i.report_id = :reportId", "reportId");
+        String sql = "select i.type as type, i.age_group as age_group, i.content as content from report_item i"
+                + conditions.where() + " order by i.id";
+        return AdminRows.list(entityManager, sql, conditions, row -> new ReportItemInfo(
+                AdminRows.asEnum(row, "type", ReportItemType.class),
+                AdminRows.asEnum(row, "age_group", AgeGroup.class),
+                AdminRows.asString(row, "content")));
+    }
+
+    public List<AdminAiPurposeUsageResponseDto> findAiUsage(Long projectId) {
+        AdminConditions conditions = byProject(projectId);
+        String sql = """
+                select a.purpose as purpose, a.model as model, count(*) as calls,
+                       sum(a.input_tokens) as input_tokens, sum(a.output_tokens) as output_tokens
+                  from ai_usage a
+                 where a.project_id = :projectId
+                 group by a.purpose, a.model
+                """;
+
+        Map<AiPurpose, AiUsageSum> sums = new EnumMap<>(AiPurpose.class);
+        AdminRows.list(entityManager, sql, conditions, row -> row).forEach(row ->
+                sums.computeIfAbsent(AdminRows.asEnum(row, "purpose", AiPurpose.class), purpose -> new AiUsageSum())
+                        .add(AdminRows.asString(row, "model"),
+                                AdminRows.asLongOrZero(row, "calls"),
+                                AdminRows.asLongOrZero(row, "input_tokens"),
+                                AdminRows.asLongOrZero(row, "output_tokens")));
+
+        return sums.entrySet().stream()
+                .map(entry -> AdminAiPurposeUsageResponseDto.of(entry.getKey(), entry.getValue()))
+                .sorted(Comparator.comparingDouble(AdminAiPurposeUsageResponseDto::totalCost).reversed())
+                .toList();
+    }
+
+    private AdminConditions byProject(Long projectId) {
+        return new AdminConditions().param("projectId", projectId);
+    }
+
+    private List<String> splitTags(String selectedTags) {
+        if (selectedTags == null || selectedTags.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(selectedTags.split(",")).map(String::trim).filter(tag -> !tag.isEmpty()).toList();
     }
 
     private AdminProjectResponseDto toSummary(Tuple row) {
