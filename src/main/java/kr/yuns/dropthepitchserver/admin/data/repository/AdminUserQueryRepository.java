@@ -5,6 +5,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Tuple;
 import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminUserSearchRequestDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminPageResponseDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminUserDetailResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminUserResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.enums.AdminUserSort;
 import kr.yuns.dropthepitchserver.admin.data.repository.support.AdminConditions;
@@ -13,6 +14,7 @@ import kr.yuns.dropthepitchserver.user.data.enums.UserRole;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class AdminUserQueryRepository {
@@ -60,6 +62,20 @@ public class AdminUserQueryRepository {
         return AdminPageResponseDto.of(items, request.getPage(), request.getSize(), totalCount);
     }
 
+    public Optional<AdminUserDetailResponseDto> findDetail(Long userId) {
+        AdminConditions conditions = new AdminConditions().add(userId, "u.id = :userId", "userId");
+        String sql = SELECT + """
+                ,
+                       (select coalesce(sum(pay.amount), 0) from payment pay where pay.credit_id = c.id) as credit_earned,
+                       (select coalesce(sum(fc.use_credit), 0) from file_analysis_credit fc where fc.credit_id = c.id)
+                         + (select coalesce(sum(oc.use_credit), 0) from opinion_request_credit oc where oc.credit_id = c.id)
+                         as credit_used,
+                       (select max(p.created_at) from project p where p.user_id = u.id) as last_project_at
+                """ + FROM + conditions.where();
+
+        return AdminRows.list(entityManager, sql, conditions, this::toDetail).stream().findFirst();
+    }
+
     private AdminUserResponseDto toSummary(Tuple row) {
         return AdminUserResponseDto.builder()
                 .id(AdminRows.asLong(row, "id"))
@@ -69,6 +85,22 @@ public class AdminUserQueryRepository {
                 .registeredAt(AdminRows.asDateTime(row, "registered_at"))
                 .credit(AdminRows.asInt(row, "credit"))
                 .projectCount(AdminRows.asLongOrZero(row, "project_count"))
+                .build();
+    }
+
+    private AdminUserDetailResponseDto toDetail(Tuple row) {
+        return AdminUserDetailResponseDto.builder()
+                .id(AdminRows.asLong(row, "id"))
+                .email(AdminRows.asString(row, "email"))
+                .name(AdminRows.asString(row, "name"))
+                .role(AdminRows.asEnum(row, "role", UserRole.class))
+                .registeredAt(AdminRows.asDateTime(row, "registered_at"))
+                .credit(AdminRows.asInt(row, "credit"))
+                .projectCount(AdminRows.asLongOrZero(row, "project_count"))
+                .modifiedAt(AdminRows.asDateTime(row, "modified_at"))
+                .creditEarned(AdminRows.asLongOrZero(row, "credit_earned"))
+                .creditUsed(AdminRows.asLongOrZero(row, "credit_used"))
+                .lastProjectAt(AdminRows.asDateTime(row, "last_project_at"))
                 .build();
     }
 }
