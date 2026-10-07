@@ -2,6 +2,7 @@ package kr.yuns.dropthepitchserver.admin.service;
 
 import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminAiUsageSearchRequestDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiDailyUsageResponseDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiPurposeUsageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminAiUsageSummaryResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.repository.AdminAiUsageQueryRepository;
 import kr.yuns.dropthepitchserver.admin.data.repository.AdminAiUsageQueryRepository.ProjectPurposeUsage;
@@ -95,5 +96,13 @@ public class AdminAiUsageService {
             daily.add(AdminAiDailyUsageResponseDto.of(date, sums.getOrDefault(date, new AiUsageSum())));
         }
         return daily;
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminAiPurposeUsageResponseDto> getByPurpose(AdminAiUsageSearchRequestDto request) {
+        return adminAiUsageQueryRepository.sumByPurpose(request).entrySet().stream()
+                .map(entry -> AdminAiPurposeUsageResponseDto.of(entry.getKey(), entry.getValue()))
+                .sorted(Comparator.comparingDouble(AdminAiPurposeUsageResponseDto::totalCost).reversed())
+                .toList();
     }
 }

@@ -56,6 +56,10 @@ public class AdminAiUsageQueryRepository {
         return total;
     }
 
+    public Map<AiPurpose, AiUsageSum> sumByPurpose(AdminAiUsageSearchRequestDto request) {
+        return sumBy(request, "a.purpose", row -> AdminRows.asEnum(row, "group_key", AiPurpose.class));
+    }
+
     public Map<LocalDate, AiUsageSum> sumByDate(AdminAiUsageSearchRequestDto request) {
         return sumBy(request, "cast(a.requested_at as date)", row -> AdminRows.asDate(row, "group_key"));
     }
