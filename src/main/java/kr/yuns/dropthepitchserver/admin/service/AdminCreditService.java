@@ -1,7 +1,10 @@
 package kr.yuns.dropthepitchserver.admin.service;
 
+import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminCreditHistorySearchRequestDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminCreditHistoryResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminCreditSummaryResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminCreditSummaryResponseDto.TypeSummary;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminPageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.repository.AdminCreditQueryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,5 +35,13 @@ public class AdminCreditService {
                 .outstanding(outstanding)
                 .byType(byType)
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public AdminPageResponseDto<AdminCreditHistoryResponseDto> getHistory(
+            AdminCreditHistorySearchRequestDto request) {
+        AdminPageResponseDto<AdminCreditHistoryResponseDto> page = adminCreditQueryRepository.search(request);
+        log.info("[getHistory] 크레딧 내역 조회: 전체 {}건, page={}", page.totalCount(), page.page());
+        return page;
     }
 }
