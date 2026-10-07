@@ -1,10 +1,12 @@
 package kr.yuns.dropthepitchserver.admin.service;
 
+import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminRoleChangeRequestDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminUserSearchRequestDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminMeResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminPageResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminUserDetailResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminUserResponseDto;
+import kr.yuns.dropthepitchserver.admin.data.exception.AdminSelfRoleChangeException;
 import kr.yuns.dropthepitchserver.admin.data.repository.AdminUserQueryRepository;
 import kr.yuns.dropthepitchserver.user.data.entity.User;
 import kr.yuns.dropthepitchserver.user.data.exception.UserNotFoundException;
@@ -45,5 +47,18 @@ public class AdminUserService {
                     log.warn("[getUser] 사용자 조회 실패: userId={}", userId);
                     return new UserNotFoundException();
                 });
+    }
+
+    @Transactional
+    public void changeRole(String adminEmail, Long userId, AdminRoleChangeRequestDto request) {
+        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+
+        if (user.getEmail().equals(adminEmail)) {
+            log.warn("[changeRole] 자신의 역할 변경 시도: {}", adminEmail);
+            throw new AdminSelfRoleChangeException();
+        }
+
+        user.setRole(request.getRole());
+        log.info("[changeRole] 역할 변경: userId={}, role={}, 요청자={}", userId, request.getRole(), adminEmail);
     }
 }
