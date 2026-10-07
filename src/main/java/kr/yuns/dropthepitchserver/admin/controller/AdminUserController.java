@@ -2,6 +2,7 @@ package kr.yuns.dropthepitchserver.admin.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
+import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminCreditGrantRequestDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminRoleChangeRequestDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminUserSearchRequestDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminPageResponseDto;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,6 +46,14 @@ public class AdminUserController {
     public GlobalResponse<Void> changeRole(@PathVariable Long userId,
                                            @Valid @RequestBody AdminRoleChangeRequestDto request) {
         adminUserService.changeRole(SecurityUtil.getUsername(), userId, request);
+        return GlobalResponse.ok();
+    }
+
+    @PostMapping("/{userId}/credits")
+    @Operation(summary = "사용자 크레딧 지급", description = "보유 크레딧이 늘고 내역에 관리자 지급으로 남습니다.")
+    public GlobalResponse<Void> grantCredit(@PathVariable Long userId,
+                                            @Valid @RequestBody AdminCreditGrantRequestDto request) {
+        adminUserService.grantCredit(SecurityUtil.getUsername(), userId, request);
         return GlobalResponse.ok();
     }
 }

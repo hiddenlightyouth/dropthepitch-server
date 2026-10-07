@@ -1,5 +1,6 @@
 package kr.yuns.dropthepitchserver.admin.service;
 
+import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminCreditGrantRequestDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminRoleChangeRequestDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminUserSearchRequestDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminMeResponseDto;
@@ -8,6 +9,12 @@ import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminUserDetailRespons
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminUserResponseDto;
 import kr.yuns.dropthepitchserver.admin.data.exception.AdminSelfRoleChangeException;
 import kr.yuns.dropthepitchserver.admin.data.repository.AdminUserQueryRepository;
+import kr.yuns.dropthepitchserver.credit.data.entity.Credit;
+import kr.yuns.dropthepitchserver.credit.data.exception.InvalidCreditAmountException;
+import kr.yuns.dropthepitchserver.credit.data.repository.CreditRepository;
+import kr.yuns.dropthepitchserver.payment.data.entity.Payment;
+import kr.yuns.dropthepitchserver.payment.data.enums.PaymentReason;
+import kr.yuns.dropthepitchserver.payment.data.repository.PaymentRepository;
 import kr.yuns.dropthepitchserver.user.data.entity.User;
 import kr.yuns.dropthepitchserver.user.data.exception.UserNotFoundException;
 import kr.yuns.dropthepitchserver.user.data.repository.UserRepository;
@@ -22,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminUserService {
     private final AdminUserQueryRepository adminUserQueryRepository;
     private final UserRepository userRepository;
+    private final CreditRepository creditRepository;
+    private final PaymentRepository paymentRepository;
 
     @Transactional(readOnly = true)
     public AdminMeResponseDto getMe(String email) {
@@ -60,5 +69,25 @@ public class AdminUserService {
 
         user.setRole(request.getRole());
         log.info("[changeRole] 역할 변경: userId={}, role={}, 요청자={}", userId, request.getRole(), adminEmail);
+    }
+
+    @Transactional
+    public void grantCredit(String adminEmail, Long userId, AdminCreditGrantRequestDto request) {
+        int amount = request.getAmount();
+        if (amount <= 0) {
+            throw new InvalidCreditAmountException();
+        }
+
+        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+
+        Credit credit = creditRepository.findWithLockByUserEmail(user.getEmail())
+                .orElseGet(() -> creditRepository.save(Credit.builder().user(user).build()));
+
+        Payment payment = Payment.builder().build();
+        payment.addAmount(credit, amount, PaymentReason.ADMIN_GRANT);
+        paymentRepository.save(payment);
+
+        log.info("[grantCredit] 관리자 크레딧 지급: userId={}, 지급 {}, 잔액 {}, 요청자={}",
+                userId, amount, credit.getAmount(), adminEmail);
     }
 }
