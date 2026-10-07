@@ -68,6 +68,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/reports/**").hasRole("USER")
                         .requestMatchers("/opinions/**").hasRole("USER")
                         .requestMatchers("/credits/**").hasRole("USER")
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
         );
 
