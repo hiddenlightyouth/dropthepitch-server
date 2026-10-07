@@ -101,6 +101,13 @@ public class AdminProjectQueryRepository {
         return AdminPageResponseDto.of(items, request.getPage(), request.getSize(), totalCount);
     }
 
+    public List<AdminProjectResponseDto> findRecent(int limit) {
+        AdminConditions conditions = new AdminConditions().add("p.deleted_at is null");
+        return AdminRows.page(entityManager,
+                SELECT + FROM + conditions.where() + " order by p.created_at desc, p.id desc", conditions,
+                0, limit, this::toSummary);
+    }
+
     public Optional<AdminProjectResponseDto> findSummary(Long projectId) {
         AdminConditions conditions = new AdminConditions().add(projectId, "p.id = :projectId", "projectId");
         return AdminRows.list(entityManager, SELECT + FROM + conditions.where(), conditions, this::toSummary)

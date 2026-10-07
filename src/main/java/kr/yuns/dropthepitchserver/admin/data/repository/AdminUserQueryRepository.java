@@ -62,6 +62,12 @@ public class AdminUserQueryRepository {
         return AdminPageResponseDto.of(items, request.getPage(), request.getSize(), totalCount);
     }
 
+    public List<AdminUserResponseDto> findRecent(int limit) {
+        AdminConditions conditions = new AdminConditions();
+        return AdminRows.page(entityManager,
+                SELECT + FROM + " order by u.registered_at desc, u.id desc", conditions, 0, limit, this::toSummary);
+    }
+
     public Optional<AdminUserDetailResponseDto> findDetail(Long userId) {
         AdminConditions conditions = new AdminConditions().add(userId, "u.id = :userId", "userId");
         String sql = SELECT + """
