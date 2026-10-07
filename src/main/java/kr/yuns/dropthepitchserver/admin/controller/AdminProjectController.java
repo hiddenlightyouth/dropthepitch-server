@@ -7,7 +7,9 @@ import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminProjectDetailResp
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminProjectResponseDto;
 import kr.yuns.dropthepitchserver.admin.service.AdminProjectService;
 import kr.yuns.dropthepitchserver.common.response.GlobalResponse;
+import kr.yuns.dropthepitchserver.common.security.SecurityUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,5 +35,13 @@ public class AdminProjectController {
             description = "업로드 파일, 파일 분석 결과, 페르소나 의견, 리포트, 용도별 AI 사용량을 함께 돌려줍니다. 삭제된 프로젝트도 조회됩니다.")
     public GlobalResponse<AdminProjectDetailResponseDto> getProject(@PathVariable Long projectId) {
         return GlobalResponse.ok(adminProjectService.getProject(projectId));
+    }
+
+    @DeleteMapping("/{projectId}")
+    @Operation(summary = "프로젝트 삭제",
+            description = "사용자가 직접 지울 때와 같이 처리합니다. AI 사용량과 크레딧 내역은 남습니다.")
+    public GlobalResponse<Void> deleteProject(@PathVariable Long projectId) {
+        adminProjectService.deleteProject(SecurityUtil.getUsername(), projectId);
+        return GlobalResponse.ok();
     }
 }
