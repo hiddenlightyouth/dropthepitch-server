@@ -9,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -20,5 +22,10 @@ public class AdminPersonaService {
         AdminPageResponseDto<AdminPersonaResponseDto> page = adminPersonaQueryRepository.search(request);
         log.info("[getPersonas] 페르소나 목록 조회: 전체 {}명, page={}", page.totalCount(), page.page());
         return page;
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> getTags() {
+        return adminPersonaQueryRepository.findTagNames();
     }
 }

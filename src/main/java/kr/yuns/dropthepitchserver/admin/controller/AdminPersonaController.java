@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/admin/personas")
 @RequiredArgsConstructor
@@ -24,5 +26,11 @@ public class AdminPersonaController {
     public GlobalResponse<AdminPageResponseDto<AdminPersonaResponseDto>> getPersonas(
             @ModelAttribute AdminPersonaSearchRequestDto request) {
         return GlobalResponse.ok(adminPersonaService.getPersonas(request));
+    }
+
+    @GetMapping("/tags")
+    @Operation(summary = "페르소나 태그 목록 조회", description = "검색 조건에 쓸 태그 전체를 가나다순으로 돌려줍니다.")
+    public GlobalResponse<List<String>> getTags() {
+        return GlobalResponse.ok(adminPersonaService.getTags());
     }
 }

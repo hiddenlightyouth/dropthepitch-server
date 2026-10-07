@@ -94,6 +94,16 @@ public class AdminPersonaQueryRepository {
         return AdminPageResponseDto.of(attachTags(items), request.getPage(), request.getSize(), totalCount);
     }
 
+    public List<String> findTagNames() {
+        return AdminRows.list(entityManager, "select distinct t.name as name from persona_tag t",
+                        new AdminConditions(), row -> AdminRows.asString(row, "name"))
+                .stream()
+                .map(AdminPersonaQueryRepository::stripHash)
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
     private List<AdminPersonaResponseDto> attachTags(List<AdminPersonaResponseDto> personas) {
         if (personas.isEmpty()) {
             return personas;
