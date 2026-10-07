@@ -1,6 +1,10 @@
 package kr.yuns.dropthepitchserver.admin.service;
 
+import kr.yuns.dropthepitchserver.admin.data.dto.request.AdminUserSearchRequestDto;
 import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminMeResponseDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminPageResponseDto;
+import kr.yuns.dropthepitchserver.admin.data.dto.response.AdminUserResponseDto;
+import kr.yuns.dropthepitchserver.admin.data.repository.AdminUserQueryRepository;
 import kr.yuns.dropthepitchserver.user.data.entity.User;
 import kr.yuns.dropthepitchserver.user.data.exception.UserNotFoundException;
 import kr.yuns.dropthepitchserver.user.data.repository.UserRepository;
@@ -13,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @RequiredArgsConstructor
 public class AdminUserService {
+    private final AdminUserQueryRepository adminUserQueryRepository;
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
@@ -23,5 +28,12 @@ public class AdminUserService {
                 .name(user.getName())
                 .role(user.getRole())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public AdminPageResponseDto<AdminUserResponseDto> getUsers(AdminUserSearchRequestDto request) {
+        AdminPageResponseDto<AdminUserResponseDto> page = adminUserQueryRepository.search(request);
+        log.info("[getUsers] 사용자 목록 조회: 전체 {}명, page={}", page.totalCount(), page.page());
+        return page;
     }
 }
