@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
@@ -38,6 +39,7 @@ public class JwtTokenProvider {
     private static final String REFRESH_KEY_PREFIX = "refresh:";
     private static final String BLACKLIST_KEY_PREFIX = "blacklist:";
     private static final String BLACKLIST_VALUE = "logout";
+    private static final String SESSION_ID_CLAIM = "sid";
 
     private final SecretKey key;
     private final RedisService redisService;
@@ -60,10 +62,12 @@ public class JwtTokenProvider {
         this.userRepository = userRepository;
     }
 
-    private String createToken(String email, String authorities, Date expireDate) {
+    private String createToken(String email, String authorities, String sessionId, Date expireDate) {
         log.info("[createToken] 새 JWT 발급 됨: {}", email);
         JwtBuilder builder = Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(email)
+                .claim(SESSION_ID_CLAIM, sessionId)
                 .expiration(expireDate)
                 .signWith(key, Jwts.SIG.HS256);
 
@@ -75,6 +79,18 @@ public class JwtTokenProvider {
     }
 
     public AuthenticationToken generateToken(Authentication authentication) {
+        return generateToken(authentication, UUID.randomUUID().toString());
+    }
+
+    public AuthenticationToken reissueToken(Authentication authentication, String sessionId) {
+        if (sessionId == null) {
+            redisService.deleteValues(refreshKey(authentication.getName(), null));
+            sessionId = UUID.randomUUID().toString();
+        }
+        return generateToken(authentication, sessionId);
+    }
+
+    private AuthenticationToken generateToken(Authentication authentication, String sessionId) {
         String username = authentication.getName();
 
         log.info("[generateToken] 새 JWT 발급 시도: {}", username);
@@ -85,11 +101,11 @@ public class JwtTokenProvider {
 
         long now = (new Date()).getTime();
 
-        String accessToken = createToken(username, authorities, new Date(now + ACCESS_TOKEN_EXPIRE_TIME));
-        String refreshToken = createToken(username, null, new Date(now + REFRESH_TOKEN_EXPIRE_TIME));
+        String accessToken = createToken(username, authorities, sessionId, new Date(now + ACCESS_TOKEN_EXPIRE_TIME));
+        String refreshToken = createToken(username, null, sessionId, new Date(now + REFRESH_TOKEN_EXPIRE_TIME));
 
         log.info("[generateToken] 발급된 Refresh Token이 Redis에 저장 됨");
-        redisService.setValues(REFRESH_KEY_PREFIX + username, refreshToken,
+        redisService.setValues(refreshKey(username, sessionId), refreshToken,
                 Duration.ofMillis(REFRESH_TOKEN_EXPIRE_TIME));
 
         return AuthenticationToken.builder()
@@ -105,13 +121,22 @@ public class JwtTokenProvider {
         return null;
     }
 
-    public void invalidateToken(String accessToken) {
-        String username = parseClaims(accessToken).getSubject();
+    private String refreshKey(String username, String sessionId) {
+        if (sessionId == null) {
+            return REFRESH_KEY_PREFIX + username;
+        }
+        return REFRESH_KEY_PREFIX + username + ":" + sessionId;
+    }
 
-        Object storedRefreshToken = redisService.getValues(REFRESH_KEY_PREFIX + username);
+    public void invalidateToken(String accessToken) {
+        Claims claims = parseClaims(accessToken);
+        String username = claims.getSubject();
+        String key = refreshKey(username, claims.get(SESSION_ID_CLAIM, String.class));
+
+        Object storedRefreshToken = redisService.getValues(key);
         if (storedRefreshToken != null) {
             blacklistToken(storedRefreshToken.toString(), "Refresh Token", username);
-            redisService.deleteValues(REFRESH_KEY_PREFIX + username);
+            redisService.deleteValues(key);
             log.info("[invalidateToken] 저장된 Refresh Token이 Redis에서 삭제 됨: {}", username);
         }
 
@@ -122,8 +147,14 @@ public class JwtTokenProvider {
         return parseClaims(token).getSubject();
     }
 
-    public boolean isStoredRefreshToken(String username, String refreshToken) {
-        Object storedRefreshToken = redisService.getValues(REFRESH_KEY_PREFIX + username);
+    public String getSessionId(String token) {
+        return parseClaims(token).get(SESSION_ID_CLAIM, String.class);
+    }
+
+    public boolean isStoredRefreshToken(String refreshToken) {
+        Claims claims = parseClaims(refreshToken);
+        String key = refreshKey(claims.getSubject(), claims.get(SESSION_ID_CLAIM, String.class));
+        Object storedRefreshToken = redisService.getValues(key);
         return storedRefreshToken != null && storedRefreshToken.toString().equals(refreshToken);
     }
 
