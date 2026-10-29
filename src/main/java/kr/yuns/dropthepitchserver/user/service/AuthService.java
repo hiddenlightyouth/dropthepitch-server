@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -146,7 +147,14 @@ public class AuthService {
             throw new TokenInvalidException();
         }
 
-        if (!tokenProvider.isStoredRefreshToken(email, refreshToken)) {
+        String sessionId = tokenProvider.getSessionId(refreshToken);
+
+        if (!Objects.equals(sessionId, tokenProvider.getSessionId(accessToken))) {
+            log.error("[refresh] 세션이 일치하지 않는 토큰으로 재발급 시도: {}", email);
+            throw new TokenInvalidException();
+        }
+
+        if (!tokenProvider.isStoredRefreshToken(refreshToken)) {
             log.error("[refresh] 저장된 Refresh Token과 일치하지 않는 재발급 시도: {}", email);
             throw new TokenInvalidException();
         }
@@ -156,7 +164,7 @@ public class AuthService {
 
         tokenProvider.blacklistAccessToken(accessToken);
         tokenProvider.blacklistRefreshToken(refreshToken);
-        AuthenticationToken authenticationToken = tokenProvider.generateToken(authentication);
+        AuthenticationToken authenticationToken = tokenProvider.reissueToken(authentication, sessionId);
         log.info("[refresh] 토큰 재발급 완료: {}", email);
 
         return GlobalResponse.ok(
